@@ -1,3 +1,12 @@
+
+# **WARNING: This branch is for fun only. DO NOT USE.**
+
+## How to run
+This requires rust nightly. run with `cargo +nightly test --features=c2rust`
+You can benchmark this against the C lib by doing the following:
+libsecp: `cargo +nightly bench --features=unstable`
+c2rust: `cargo +nightly bench --features="c2rust,unstable"`
+
 [![Build Status](https://travis-ci.org/rust-bitcoin/rust-secp256k1.png?branch=master)](https://travis-ci.org/rust-bitcoin/rust-secp256k1)
 
 [Full documentation](https://docs.rs/secp256k1/)

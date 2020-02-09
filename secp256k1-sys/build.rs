@@ -26,6 +26,9 @@ extern crate cc;
 use std::env;
 
 fn main() {
+    if cfg!(feature = "c2rust") {
+        return;
+    }
     if cfg!(feature = "external-symbols") {
         println!("cargo:rustc-link-lib=static=secp256k1");
         return;

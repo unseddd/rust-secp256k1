@@ -29,6 +29,8 @@
 #[cfg(any(test, feature = "std"))]
 extern crate core;
 
+#[cfg(feature = "c2rust")] extern crate c2rust_out;
+
 #[macro_use]
 mod macros;
 pub mod types;

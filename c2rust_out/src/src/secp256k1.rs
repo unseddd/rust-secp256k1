@@ -44109,7 +44109,7 @@ unsafe extern "C" fn secp256k1_default_illegal_callback_fn(
         b"[libsecp256k1] illegal argument: %s\n\x00" as *const u8 as *const libc::c_char,
         str,
     );
-    abort();
+    panic!();
 }
 unsafe extern "C" fn secp256k1_default_error_callback_fn(
     mut str: *const libc::c_char,
@@ -44121,7 +44121,7 @@ unsafe extern "C" fn secp256k1_default_error_callback_fn(
             as *const libc::c_char,
         str,
     );
-    abort();
+    panic!();
 }
 static mut default_illegal_callback: secp256k1_callback = unsafe {
     {

@@ -11,18 +11,13 @@
 #![feature(register_tool)]
 #![register_tool(c2rust)]
 
-
-
 extern crate libc;
 
-
-
 pub mod src {
-pub mod contrib {
-pub mod lax_der_parsing;
-} // mod contrib
-pub mod src {
-pub mod secp256k1;
+    pub mod contrib {
+        pub mod lax_der_parsing;
+    } // mod contrib
+    pub mod src {
+        pub mod secp256k1;
+    } // mod src
 } // mod src
-} // mod src
-

@@ -2,32 +2,30 @@ use ::libc;
 extern "C" {
     pub type secp256k1_context_struct;
     #[no_mangle]
-    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong)
-     -> *mut libc::c_void;
+    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     #[no_mangle]
-    fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong)
-     -> *mut libc::c_void;
+    fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
     /* * Parse an ECDSA signature in compact (64 bytes) format.
- *
- *  Returns: 1 when the signature could be parsed, 0 otherwise.
- *  Args: ctx:      a secp256k1 context object
- *  Out:  sig:      a pointer to a signature object
- *  In:   input64:  a pointer to the 64-byte array to parse
- *
- *  The signature must consist of a 32-byte big endian R value, followed by a
- *  32-byte big endian S value. If R or S fall outside of [0..order-1], the
- *  encoding is invalid. R and S with value 0 are allowed in the encoding.
- *
- *  After the call, sig will always be initialized. If parsing failed or R or
- *  S are zero, the resulting sig value is guaranteed to fail validation for any
- *  message and public key.
- */
+     *
+     *  Returns: 1 when the signature could be parsed, 0 otherwise.
+     *  Args: ctx:      a secp256k1 context object
+     *  Out:  sig:      a pointer to a signature object
+     *  In:   input64:  a pointer to the 64-byte array to parse
+     *
+     *  The signature must consist of a 32-byte big endian R value, followed by a
+     *  32-byte big endian S value. If R or S fall outside of [0..order-1], the
+     *  encoding is invalid. R and S with value 0 are allowed in the encoding.
+     *
+     *  After the call, sig will always be initialized. If parsing failed or R or
+     *  S are zero, the resulting sig value is guaranteed to fail validation for any
+     *  message and public key.
+     */
     #[no_mangle]
-    fn secp256k1_ecdsa_signature_parse_compact(ctx: *const secp256k1_context,
-                                               sig:
-                                                   *mut secp256k1_ecdsa_signature,
-                                               input64: *const libc::c_uchar)
-     -> libc::c_int;
+    fn secp256k1_ecdsa_signature_parse_compact(
+        ctx: *const secp256k1_context,
+        sig: *mut secp256k1_ecdsa_signature,
+        input64: *const libc::c_uchar,
+    ) -> libc::c_int;
 }
 pub type size_t = libc::c_ulong;
 /* These rules specify the order of arguments in API calls:
@@ -142,134 +140,195 @@ pub struct secp256k1_ecdsa_signature {
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
  **********************************************************************/
 #[no_mangle]
-pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(mut ctx:
-                                                           *const secp256k1_context,
-                                                       mut sig:
-                                                           *mut secp256k1_ecdsa_signature,
-                                                       mut input:
-                                                           *const libc::c_uchar,
-                                                       mut inputlen: size_t)
- -> libc::c_int {
+pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
+    mut ctx: *const secp256k1_context,
+    mut sig: *mut secp256k1_ecdsa_signature,
+    mut input: *const libc::c_uchar,
+    mut inputlen: size_t,
+) -> libc::c_int {
     let mut rpos: size_t = 0;
     let mut rlen: size_t = 0;
     let mut spos: size_t = 0;
     let mut slen: size_t = 0;
     let mut pos: size_t = 0 as libc::c_int as size_t;
     let mut lenbyte: size_t = 0;
-    let mut tmpsig: [libc::c_uchar; 64] =
-        [0 as libc::c_int as libc::c_uchar, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0];
+    let mut tmpsig: [libc::c_uchar; 64] = [
+        0 as libc::c_int as libc::c_uchar,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ];
     let mut overflow: libc::c_int = 0 as libc::c_int;
     /* Hack to initialize sig with a correctly-parsed but invalid signature. */
     secp256k1_ecdsa_signature_parse_compact(ctx, sig, tmpsig.as_mut_ptr());
     /* Sequence tag byte */
-    if pos == inputlen ||
-           *input.offset(pos as isize) as libc::c_int != 0x30 as libc::c_int {
-        return 0 as libc::c_int
+    if pos == inputlen || *input.offset(pos as isize) as libc::c_int != 0x30 as libc::c_int {
+        return 0 as libc::c_int;
     }
     pos = pos.wrapping_add(1);
     /* Sequence length bytes */
-    if pos == inputlen { return 0 as libc::c_int }
+    if pos == inputlen {
+        return 0 as libc::c_int;
+    }
     let fresh0 = pos;
     pos = pos.wrapping_add(1);
     lenbyte = *input.offset(fresh0 as isize) as size_t;
     if lenbyte & 0x80 as libc::c_int as libc::c_ulong != 0 {
-        lenbyte =
-            (lenbyte as
-                 libc::c_ulong).wrapping_sub(0x80 as libc::c_int as
-                                                 libc::c_ulong) as size_t as
-                size_t;
-        if lenbyte > inputlen.wrapping_sub(pos) { return 0 as libc::c_int }
+        lenbyte = (lenbyte as libc::c_ulong).wrapping_sub(0x80 as libc::c_int as libc::c_ulong)
+            as size_t as size_t;
+        if lenbyte > inputlen.wrapping_sub(pos) {
+            return 0 as libc::c_int;
+        }
         pos = (pos as libc::c_ulong).wrapping_add(lenbyte) as size_t as size_t
     }
     /* Integer tag byte for R */
-    if pos == inputlen ||
-           *input.offset(pos as isize) as libc::c_int != 0x2 as libc::c_int {
-        return 0 as libc::c_int
+    if pos == inputlen || *input.offset(pos as isize) as libc::c_int != 0x2 as libc::c_int {
+        return 0 as libc::c_int;
     }
     pos = pos.wrapping_add(1);
     /* Integer length for R */
-    if pos == inputlen { return 0 as libc::c_int }
+    if pos == inputlen {
+        return 0 as libc::c_int;
+    }
     let fresh1 = pos;
     pos = pos.wrapping_add(1);
     lenbyte = *input.offset(fresh1 as isize) as size_t;
     if lenbyte & 0x80 as libc::c_int as libc::c_ulong != 0 {
-        lenbyte =
-            (lenbyte as
-                 libc::c_ulong).wrapping_sub(0x80 as libc::c_int as
-                                                 libc::c_ulong) as size_t as
-                size_t;
-        if lenbyte > inputlen.wrapping_sub(pos) { return 0 as libc::c_int }
-        while lenbyte > 0 as libc::c_int as libc::c_ulong &&
-                  *input.offset(pos as isize) as libc::c_int ==
-                      0 as libc::c_int {
+        lenbyte = (lenbyte as libc::c_ulong).wrapping_sub(0x80 as libc::c_int as libc::c_ulong)
+            as size_t as size_t;
+        if lenbyte > inputlen.wrapping_sub(pos) {
+            return 0 as libc::c_int;
+        }
+        while lenbyte > 0 as libc::c_int as libc::c_ulong
+            && *input.offset(pos as isize) as libc::c_int == 0 as libc::c_int
+        {
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
         if lenbyte >= ::std::mem::size_of::<size_t>() as libc::c_ulong {
-            return 0 as libc::c_int
+            return 0 as libc::c_int;
         }
         rlen = 0 as libc::c_int as size_t;
         while lenbyte > 0 as libc::c_int as libc::c_ulong {
-            rlen =
-                (rlen <<
-                     8 as
-                         libc::c_int).wrapping_add(*input.offset(pos as isize)
-                                                       as libc::c_ulong);
+            rlen = (rlen << 8 as libc::c_int)
+                .wrapping_add(*input.offset(pos as isize) as libc::c_ulong);
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
-    } else { rlen = lenbyte }
-    if rlen > inputlen.wrapping_sub(pos) { return 0 as libc::c_int }
+    } else {
+        rlen = lenbyte
+    }
+    if rlen > inputlen.wrapping_sub(pos) {
+        return 0 as libc::c_int;
+    }
     rpos = pos;
     pos = (pos as libc::c_ulong).wrapping_add(rlen) as size_t as size_t;
     /* Integer tag byte for S */
-    if pos == inputlen ||
-           *input.offset(pos as isize) as libc::c_int != 0x2 as libc::c_int {
-        return 0 as libc::c_int
+    if pos == inputlen || *input.offset(pos as isize) as libc::c_int != 0x2 as libc::c_int {
+        return 0 as libc::c_int;
     }
     pos = pos.wrapping_add(1);
     /* Integer length for S */
-    if pos == inputlen { return 0 as libc::c_int }
+    if pos == inputlen {
+        return 0 as libc::c_int;
+    }
     let fresh2 = pos;
     pos = pos.wrapping_add(1);
     lenbyte = *input.offset(fresh2 as isize) as size_t;
     if lenbyte & 0x80 as libc::c_int as libc::c_ulong != 0 {
-        lenbyte =
-            (lenbyte as
-                 libc::c_ulong).wrapping_sub(0x80 as libc::c_int as
-                                                 libc::c_ulong) as size_t as
-                size_t;
-        if lenbyte > inputlen.wrapping_sub(pos) { return 0 as libc::c_int }
-        while lenbyte > 0 as libc::c_int as libc::c_ulong &&
-                  *input.offset(pos as isize) as libc::c_int ==
-                      0 as libc::c_int {
+        lenbyte = (lenbyte as libc::c_ulong).wrapping_sub(0x80 as libc::c_int as libc::c_ulong)
+            as size_t as size_t;
+        if lenbyte > inputlen.wrapping_sub(pos) {
+            return 0 as libc::c_int;
+        }
+        while lenbyte > 0 as libc::c_int as libc::c_ulong
+            && *input.offset(pos as isize) as libc::c_int == 0 as libc::c_int
+        {
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
         if lenbyte >= ::std::mem::size_of::<size_t>() as libc::c_ulong {
-            return 0 as libc::c_int
+            return 0 as libc::c_int;
         }
         slen = 0 as libc::c_int as size_t;
         while lenbyte > 0 as libc::c_int as libc::c_ulong {
-            slen =
-                (slen <<
-                     8 as
-                         libc::c_int).wrapping_add(*input.offset(pos as isize)
-                                                       as libc::c_ulong);
+            slen = (slen << 8 as libc::c_int)
+                .wrapping_add(*input.offset(pos as isize) as libc::c_ulong);
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
-    } else { slen = lenbyte }
-    if slen > inputlen.wrapping_sub(pos) { return 0 as libc::c_int }
+    } else {
+        slen = lenbyte
+    }
+    if slen > inputlen.wrapping_sub(pos) {
+        return 0 as libc::c_int;
+    }
     spos = pos;
     pos = (pos as libc::c_ulong).wrapping_add(slen) as size_t as size_t;
     /* Ignore leading zeroes in R */
-    while rlen > 0 as libc::c_int as libc::c_ulong &&
-              *input.offset(rpos as isize) as libc::c_int == 0 as libc::c_int
-          {
+    while rlen > 0 as libc::c_int as libc::c_ulong
+        && *input.offset(rpos as isize) as libc::c_int == 0 as libc::c_int
+    {
         rlen = rlen.wrapping_sub(1);
         rpos = rpos.wrapping_add(1)
     }
@@ -277,15 +336,19 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(mut ctx:
     if rlen > 32 as libc::c_int as libc::c_ulong {
         overflow = 1 as libc::c_int
     } else {
-        memcpy(tmpsig.as_mut_ptr().offset(32 as libc::c_int as
-                                              isize).offset(-(rlen as isize))
-                   as *mut libc::c_void,
-               input.offset(rpos as isize) as *const libc::c_void, rlen);
+        memcpy(
+            tmpsig
+                .as_mut_ptr()
+                .offset(32 as libc::c_int as isize)
+                .offset(-(rlen as isize)) as *mut libc::c_void,
+            input.offset(rpos as isize) as *const libc::c_void,
+            rlen,
+        );
     }
     /* Ignore leading zeroes in S */
-    while slen > 0 as libc::c_int as libc::c_ulong &&
-              *input.offset(spos as isize) as libc::c_int == 0 as libc::c_int
-          {
+    while slen > 0 as libc::c_int as libc::c_ulong
+        && *input.offset(spos as isize) as libc::c_int == 0 as libc::c_int
+    {
         slen = slen.wrapping_sub(1);
         spos = spos.wrapping_add(1)
     }
@@ -293,22 +356,26 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(mut ctx:
     if slen > 32 as libc::c_int as libc::c_ulong {
         overflow = 1 as libc::c_int
     } else {
-        memcpy(tmpsig.as_mut_ptr().offset(64 as libc::c_int as
-                                              isize).offset(-(slen as isize))
-                   as *mut libc::c_void,
-               input.offset(spos as isize) as *const libc::c_void, slen);
+        memcpy(
+            tmpsig
+                .as_mut_ptr()
+                .offset(64 as libc::c_int as isize)
+                .offset(-(slen as isize)) as *mut libc::c_void,
+            input.offset(spos as isize) as *const libc::c_void,
+            slen,
+        );
     }
     if overflow == 0 {
-        overflow =
-            (secp256k1_ecdsa_signature_parse_compact(ctx, sig,
-                                                     tmpsig.as_mut_ptr()) ==
-                 0) as libc::c_int
+        overflow = (secp256k1_ecdsa_signature_parse_compact(ctx, sig, tmpsig.as_mut_ptr()) == 0)
+            as libc::c_int
     }
     if overflow != 0 {
-        memset(tmpsig.as_mut_ptr() as *mut libc::c_void, 0 as libc::c_int,
-               64 as libc::c_int as libc::c_ulong);
-        secp256k1_ecdsa_signature_parse_compact(ctx, sig,
-                                                tmpsig.as_mut_ptr());
+        memset(
+            tmpsig.as_mut_ptr() as *mut libc::c_void,
+            0 as libc::c_int,
+            64 as libc::c_int as libc::c_ulong,
+        );
+        secp256k1_ecdsa_signature_parse_compact(ctx, sig, tmpsig.as_mut_ptr());
     }
     return 1 as libc::c_int;
 }

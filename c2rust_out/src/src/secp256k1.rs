@@ -14,11 +14,17 @@ extern "C" {
     #[no_mangle]
     fn abort() -> !;
     #[no_mangle]
-    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-    #[no_mangle]
-    fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-    #[no_mangle]
     fn memcmp(_: *const libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> libc::c_int;
+}
+
+pub unsafe fn memset(ptr: *mut libc::c_void, constant: libc::c_int, size: libc::c_ulong) -> *mut libc::c_void {
+    ::std::ptr::write_bytes(ptr as *mut u8, constant as u8, size as usize);
+    ptr
+}
+
+pub unsafe fn memcpy(dst: *mut libc::c_void, src: *const libc::c_void, size: libc::c_ulong) -> *mut libc::c_void {
+    ::std::ptr::copy_nonoverlapping(src as *const u8, dst as *mut u8, size as usize);
+    dst
 }
 pub type size_t = libc::c_ulong;
 #[derive(Copy, Clone)]

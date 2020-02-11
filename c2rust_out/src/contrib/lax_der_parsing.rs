@@ -1,32 +1,5 @@
 use ::libc;
-extern "C" {
-    pub type secp256k1_context_struct;
-    #[no_mangle]
-    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-    #[no_mangle]
-    fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-    /* * Parse an ECDSA signature in compact (64 bytes) format.
-     *
-     *  Returns: 1 when the signature could be parsed, 0 otherwise.
-     *  Args: ctx:      a secp256k1 context object
-     *  Out:  sig:      a pointer to a signature object
-     *  In:   input64:  a pointer to the 64-byte array to parse
-     *
-     *  The signature must consist of a 32-byte big endian R value, followed by a
-     *  32-byte big endian S value. If R or S fall outside of [0..order-1], the
-     *  encoding is invalid. R and S with value 0 are allowed in the encoding.
-     *
-     *  After the call, sig will always be initialized. If parsing failed or R or
-     *  S are zero, the resulting sig value is guaranteed to fail validation for any
-     *  message and public key.
-     */
-    #[no_mangle]
-    fn secp256k1_ecdsa_signature_parse_compact(
-        ctx: *const secp256k1_context,
-        sig: *mut secp256k1_ecdsa_signature,
-        input64: *const libc::c_uchar,
-    ) -> libc::c_int;
-}
+use crate::src::src::secp256k1::{secp256k1_context, secp256k1_ecdsa_signature_parse_compact, memcpy, memset, secp256k1_ecdsa_signature};
 pub type size_t = libc::c_ulong;
 /* These rules specify the order of arguments in API calls:
  *
@@ -61,12 +34,7 @@ pub type size_t = libc::c_ulong;
  *  Regarding randomization, either do it once at creation time (in which case
  *  you do not need any locking for the other calls), or use a read-write lock.
  */
-pub type secp256k1_context = secp256k1_context_struct;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct secp256k1_ecdsa_signature {
-    pub data: [libc::c_uchar; 64],
-}
+
 /* *********************************************************************
  * Copyright (c) 2015 Pieter Wuille                                   *
  * Distributed under the MIT software license, see the accompanying   *

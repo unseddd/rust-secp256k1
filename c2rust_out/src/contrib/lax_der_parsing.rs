@@ -109,10 +109,10 @@ pub type size_t = libc::c_ulong;
  **********************************************************************/
 #[no_mangle]
 pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
-    mut ctx: *const secp256k1_context,
-    mut sig: *mut secp256k1_ecdsa_signature,
-    mut input: *const libc::c_uchar,
-    mut inputlen: size_t,
+    ctx: *const secp256k1_context,
+    sig: *mut secp256k1_ecdsa_signature,
+    input: *const libc::c_uchar,
+    inputlen: size_t,
 ) -> libc::c_int {
     let mut rpos: size_t = 0;
     let mut rlen: size_t = 0;

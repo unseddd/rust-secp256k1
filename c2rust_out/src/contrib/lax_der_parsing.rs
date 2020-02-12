@@ -1,5 +1,8 @@
+use crate::src::src::secp256k1::{
+    memcpy, memset, secp256k1_context, secp256k1_ecdsa_signature,
+    secp256k1_ecdsa_signature_parse_compact,
+};
 use ::libc;
-use crate::src::src::secp256k1::{secp256k1_context, secp256k1_ecdsa_signature_parse_compact, memcpy, memset, secp256k1_ecdsa_signature};
 pub type size_t = libc::c_ulong;
 /* These rules specify the order of arguments in API calls:
  *
@@ -114,78 +117,13 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     input: *const libc::c_uchar,
     inputlen: size_t,
 ) -> libc::c_int {
-    let mut rpos: size_t = 0;
-    let mut rlen: size_t = 0;
-    let mut spos: size_t = 0;
-    let mut slen: size_t = 0;
-    let mut pos: size_t = 0 as libc::c_int as size_t;
-    let mut lenbyte: size_t = 0;
-    let mut tmpsig: [libc::c_uchar; 64] = [
-        0 as libc::c_int as libc::c_uchar,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-    ];
+    let mut rpos: size_t;
+    let mut rlen: size_t;
+    let mut spos: size_t;
+    let mut slen: size_t;
+    let mut pos: size_t = 0;
+    let mut lenbyte: size_t;
+    let mut tmpsig: [libc::c_uchar; 64] = [0; 64];
     let mut overflow: libc::c_int = 0 as libc::c_int;
     /* Hack to initialize sig with a correctly-parsed but invalid signature. */
     secp256k1_ecdsa_signature_parse_compact(ctx, sig, tmpsig.as_mut_ptr());

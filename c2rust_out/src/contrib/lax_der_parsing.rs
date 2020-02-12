@@ -127,7 +127,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     /* Hack to initialize sig with a correctly-parsed but invalid signature. */
     secp256k1_ecdsa_signature_parse_compact(ctx, sig, tmpsig.as_mut_ptr());
     /* Sequence tag byte */
-    if pos == inputlen || *input.offset(pos as isize) as libc::c_int != 0x30 as libc::c_int {
+    if pos == inputlen || *input.add(pos) as libc::c_int != 0x30 as libc::c_int {
         return 0 as libc::c_int;
     }
     pos = pos.wrapping_add(1);
@@ -137,7 +137,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     }
     let fresh0 = pos;
     pos = pos.wrapping_add(1);
-    lenbyte = *input.offset(fresh0 as isize) as size_t;
+    lenbyte = *input.add(fresh0) as size_t;
     if lenbyte & 0x80 != 0 {
         lenbyte = lenbyte.wrapping_sub(0x80) as size_t as size_t;
         if lenbyte > inputlen.wrapping_sub(pos) {
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
         pos = pos.wrapping_add(lenbyte);
     }
     /* Integer tag byte for R */
-    if pos == inputlen || *input.offset(pos as isize) as libc::c_int != 0x2 as libc::c_int {
+    if pos == inputlen || *input.add(pos) as libc::c_int != 0x2 as libc::c_int {
         return 0 as libc::c_int;
     }
     pos = pos.wrapping_add(1);
@@ -156,13 +156,13 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     }
     let fresh1 = pos;
     pos = pos.wrapping_add(1);
-    lenbyte = *input.offset(fresh1 as isize) as size_t;
+    lenbyte = *input.add(fresh1) as size_t;
     if lenbyte & 0x80 != 0 {
         lenbyte = lenbyte.wrapping_sub(0x80) as size_t as size_t;
         if lenbyte > inputlen.wrapping_sub(pos) {
             return 0 as libc::c_int;
         }
-        while lenbyte > 0 && *input.offset(pos as isize) as size_t == 0 {
+        while lenbyte > 0 && *input.add(pos) as size_t == 0 {
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
         }
         rlen = 0;
         while lenbyte > 0 {
-            rlen = (rlen << 8 as libc::c_int).wrapping_add(*input.offset(pos as isize) as size_t);
+            rlen = (rlen << 8 as libc::c_int).wrapping_add(*input.add(pos) as size_t);
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     rpos = pos;
     pos = pos.wrapping_add(rlen);
     /* Integer tag byte for S */
-    if pos == inputlen || *input.offset(pos as isize) as libc::c_int != 0x2 as libc::c_int {
+    if pos == inputlen || *input.add(pos) as libc::c_int != 0x2 as libc::c_int {
         return 0 as libc::c_int;
     }
     pos = pos.wrapping_add(1);
@@ -194,13 +194,13 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     }
     let fresh2 = pos;
     pos = pos.wrapping_add(1);
-    lenbyte = *input.offset(fresh2 as isize) as size_t;
+    lenbyte = *input.add(fresh2) as size_t;
     if lenbyte & 0x80 != 0 {
         lenbyte = lenbyte.wrapping_sub(0x80) as size_t as size_t;
         if lenbyte > inputlen.wrapping_sub(pos) {
             return 0 as libc::c_int;
         }
-        while lenbyte > 0 && *input.offset(pos as isize) as libc::c_int == 0 as libc::c_int {
+        while lenbyte > 0 && *input.add(pos) as libc::c_int == 0 as libc::c_int {
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
@@ -209,7 +209,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
         }
         slen = 0;
         while lenbyte > 0 {
-            slen = (slen << 8).wrapping_add(*input.offset(pos as isize) as size_t);
+            slen = (slen << 8).wrapping_add(*input.add(pos) as size_t);
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
     spos = pos;
     pos = pos.wrapping_add(slen);
     /* Ignore leading zeroes in R */
-    while rlen > 0 && *input.offset(rpos as isize) as libc::c_int == 0 as libc::c_int {
+    while rlen > 0 && *input.add(rpos) as libc::c_int == 0 as libc::c_int {
         rlen = rlen.wrapping_sub(1);
         rpos = rpos.wrapping_add(1)
     }
@@ -235,12 +235,12 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
                 .as_mut_ptr()
                 .offset(32 as libc::c_int as isize)
                 .offset(-(rlen as isize)) as *mut libc::c_void,
-            input.offset(rpos as isize) as *const libc::c_void,
+            input.add(rpos) as *const libc::c_void,
             rlen,
         );
     }
     /* Ignore leading zeroes in S */
-    while slen > 0 && *input.offset(spos as isize) as libc::c_int == 0 as libc::c_int {
+    while slen > 0 && *input.add(spos) as libc::c_int == 0 as libc::c_int {
         slen = slen.wrapping_sub(1);
         spos = spos.wrapping_add(1)
     }
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
                 .as_mut_ptr()
                 .offset(64 as libc::c_int as isize)
                 .offset(-(slen as isize)) as *mut libc::c_void,
-            input.offset(spos as isize) as *const libc::c_void,
+            input.add(spos) as *const libc::c_void,
             slen,
         );
     }

@@ -32,6 +32,13 @@ pub unsafe fn memcpy(
     std::ptr::copy_nonoverlapping(src as *const u8, dst as *mut u8, size);
     dst
 }
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct secp256k1_ecdsa_recoverable_signature {
+    pub data: [libc::c_uchar; 65],
+}
+
 pub type size_t = usize;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -459,7 +466,7 @@ unsafe extern "C" fn manual_alloc(
     }
     ret = *prealloc_ptr;
     let ref mut fresh0 = *(prealloc_ptr as *mut *mut libc::c_uchar);
-    *fresh0 = (*fresh0).offset(aligned_alloc_size as isize);
+    *fresh0 = (*fresh0).add(aligned_alloc_size);
     return ret;
 }
 /* * Implements arithmetic modulo FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F,
@@ -5982,20 +5989,20 @@ unsafe extern "C" fn secp256k1_ge_globalz_set_table_gej(
     };
     if len > 0 {
         /* The z of the final point gives us the "global Z" for the table. */
-        (*r.offset(i as isize)).x = (*a.offset(i as isize)).x;
-        (*r.offset(i as isize)).y = (*a.offset(i as isize)).y;
+        (*r.add(i)).x = (*a.add(i)).x;
+        (*r.add(i)).y = (*a.add(i)).y;
         /* Ensure all y values are in weak normal form for fast negation of points */
-        secp256k1_fe_normalize_weak(&mut (*r.offset(i as isize)).y);
-        *globalz = (*a.offset(i as isize)).z;
-        (*r.offset(i as isize)).infinity = 0 as libc::c_int;
-        zs = *zr.offset(i as isize);
+        secp256k1_fe_normalize_weak(&mut (*r.add(i)).y);
+        *globalz = (*a.add(i)).z;
+        (*r.add(i)).infinity = 0 as libc::c_int;
+        zs = *zr.add(i);
         /* Work our way backwards, using the z-ratios to scale the x/y values. */
         while i > 0 {
             if i != len.wrapping_sub(1) {
-                secp256k1_fe_mul(&mut zs, &zs, &*zr.offset(i as isize));
+                secp256k1_fe_mul(&mut zs, &zs, &*zr.add(i));
             }
             i = i.wrapping_sub(1);
-            secp256k1_ge_set_gej_zinv(&mut *r.offset(i as isize), &*a.offset(i as isize), &zs);
+            secp256k1_ge_set_gej_zinv(&mut *r.add(i), &*a.add(i), &zs);
         }
     };
 }
@@ -6834,6 +6841,32 @@ unsafe extern "C" fn secp256k1_ge_to_storage(r: *mut secp256k1_ge_storage, a: *c
     secp256k1_fe_to_storage(&mut (*r).x, &x);
     secp256k1_fe_to_storage(&mut (*r).y, &y);
 }
+
+unsafe extern "C" fn secp256k1_ge_set_gej_var(mut r: *mut secp256k1_ge, a: *mut secp256k1_gej) {
+    let mut z2: secp256k1_fe = secp256k1_fe {
+        n: [0; 5],
+        magnitude: 0,
+        normalized: 0,
+    };
+    let mut z3: secp256k1_fe = secp256k1_fe {
+        n: [0; 5],
+        magnitude: 0,
+        normalized: 0,
+    };
+    (*r).infinity = (*a).infinity;
+    if (*a).infinity != 0 {
+        return;
+    }
+    secp256k1_fe_inv_var(&mut (*a).z, &(*a).z);
+    secp256k1_fe_sqr(&mut z2, &(*a).z);
+    secp256k1_fe_mul(&mut z3, &(*a).z, &z2);
+    secp256k1_fe_mul(&mut (*a).x, &(*a).x, &z2);
+    secp256k1_fe_mul(&mut (*a).y, &(*a).y, &z3);
+    secp256k1_fe_set_int(&mut (*a).z, 1 as libc::c_int);
+    (*r).x = (*a).x;
+    (*r).y = (*a).y;
+}
+
 /* * Convert a group element back from the storage type. */
 unsafe extern "C" fn secp256k1_ge_from_storage(
     mut r: *mut secp256k1_ge,
@@ -7511,12 +7544,11 @@ unsafe extern "C" fn secp256k1_ecmult_strauss_wnaf(
             (1 as libc::c_int) << 5 as libc::c_int - 2 as libc::c_int,
             (*state).prej,
             (*state).zr,
-            &*a.offset((*(*state).ps.offset(0 as libc::c_int as isize)).input_pos as isize),
+            &*a.add((*(*state).ps.offset(0 as libc::c_int as isize)).input_pos),
         );
         np = 1 as libc::c_int;
         while np < no {
-            let mut tmp: secp256k1_gej =
-                *a.offset((*(*state).ps.offset(np as isize)).input_pos as isize);
+            let mut tmp: secp256k1_gej = *a.add((*(*state).ps.offset(np as isize)).input_pos);
             secp256k1_fe_normalize_var(
                 &mut (*(*state).prej.offset(
                     ((np - 1 as libc::c_int)
@@ -7553,7 +7585,7 @@ unsafe extern "C" fn secp256k1_ecmult_strauss_wnaf(
                 (*state).zr.offset(
                     (np * ((1 as libc::c_int) << 5 as libc::c_int - 2 as libc::c_int)) as isize,
                 ),
-                &(*a.offset((*(*state).ps.offset(np as isize)).input_pos as isize)).z,
+                &(*a.add((*(*state).ps.offset(np as isize)).input_pos)).z,
             );
             np += 1
         }
@@ -8482,7 +8514,7 @@ unsafe extern "C" fn secp256k1_rfc6979_hmac_sha256_generate(
             (*rng).v.as_mut_ptr() as *const libc::c_void,
             now,
         );
-        out = out.offset(now as isize);
+        out = out.add(now);
         outlen = outlen.wrapping_sub(now);
     }
     (*rng).retry = 1 as libc::c_int;
@@ -8632,20 +8664,18 @@ unsafe extern "C" fn secp256k1_sha256_write(
     while len >= (64 as size_t).wrapping_sub(bufsize) {
         let chunk_len: size_t = (64 as size_t).wrapping_sub(bufsize);
         memcpy(
-            ((*hash).buf.as_mut_ptr() as *mut libc::c_uchar).offset(bufsize as isize)
-                as *mut libc::c_void,
+            ((*hash).buf.as_mut_ptr() as *mut libc::c_uchar).add(bufsize) as *mut libc::c_void,
             data as *const libc::c_void,
             chunk_len,
         );
-        data = data.offset(chunk_len as isize);
+        data = data.add(chunk_len);
         len = len.wrapping_sub(chunk_len);
         secp256k1_sha256_transform((*hash).s.as_mut_ptr(), (*hash).buf.as_mut_ptr());
         bufsize = 0 as libc::c_int as size_t
     }
     if len != 0 {
         memcpy(
-            ((*hash).buf.as_mut_ptr() as *mut libc::c_uchar).offset(bufsize as isize)
-                as *mut libc::c_void,
+            ((*hash).buf.as_mut_ptr() as *mut libc::c_uchar).add(bufsize) as *mut libc::c_void,
             data as *const libc::c_void,
             len,
         );
@@ -10310,7 +10340,7 @@ unsafe extern "C" fn secp256k1_hmac_sha256_initialize(
             keylen,
         );
         memset(
-            rkey.as_mut_ptr().offset(keylen as isize) as *mut libc::c_void,
+            rkey.as_mut_ptr().add(keylen) as *mut libc::c_void,
             0 as libc::c_int,
             (std::mem::size_of::<[libc::c_uchar; 64]>()).wrapping_sub(keylen),
         );
@@ -46566,7 +46596,7 @@ unsafe extern "C" fn secp256k1_der_parse_integer(
     if secp256k1_der_read_len(&mut rlen, sig, sigend) == 0 as libc::c_int {
         return 0 as libc::c_int;
     }
-    if rlen == 0 || (*sig).offset(rlen as isize) > sigend {
+    if rlen == 0 || (*sig).add(rlen) > sigend {
         /* Exceeds bounds or not at least length 1 (X.690-0207 8.3.1).  */
         return 0 as libc::c_int;
     }
@@ -46612,7 +46642,7 @@ unsafe extern "C" fn secp256k1_der_parse_integer(
     if overflow != 0 {
         secp256k1_scalar_set_int(r, 0 as libc::c_int as libc::c_uint);
     }
-    *sig = (*sig).offset(rlen as isize);
+    *sig = (*sig).add(rlen);
     return 1 as libc::c_int;
 }
 /* *********************************************************************
@@ -46626,7 +46656,7 @@ unsafe extern "C" fn secp256k1_ecdsa_sig_parse(
     mut sig: *const libc::c_uchar,
     size: size_t,
 ) -> libc::c_int {
-    let sigend: *const libc::c_uchar = sig.offset(size as isize);
+    let sigend: *const libc::c_uchar = sig.add(size);
     let mut rlen: size_t = 0;
     if sig == sigend || {
         let fresh12 = sig;
@@ -46698,10 +46728,10 @@ unsafe extern "C" fn secp256k1_ecdsa_sig_serialize(
         rp as *const libc::c_void,
         lenR,
     );
-    *sig.offset((4 as size_t).wrapping_add(lenR) as isize) = 0x2 as libc::c_int as libc::c_uchar;
-    *sig.offset((5 as size_t).wrapping_add(lenR) as isize) = lenS as libc::c_uchar;
+    *sig.add((4 as size_t).wrapping_add(lenR)) = 0x2 as libc::c_int as libc::c_uchar;
+    *sig.add((5 as size_t).wrapping_add(lenR)) = lenS as libc::c_uchar;
     memcpy(
-        sig.offset(lenR as isize).offset(6 as libc::c_int as isize) as *mut libc::c_void,
+        sig.add(lenR).offset(6 as libc::c_int as isize) as *mut libc::c_void,
         sp as *const libc::c_void,
         lenS,
     );
@@ -47116,7 +47146,7 @@ unsafe extern "C" fn secp256k1_scratch_create(
             b"scratch\x00" as *const u8 as *const libc::c_char as *const libc::c_void,
             8,
         );
-        (*ret).data = (alloc as *mut libc::c_char).offset(base_alloc as isize) as *mut libc::c_void;
+        (*ret).data = (alloc as *mut libc::c_char).add(base_alloc) as *mut libc::c_void;
         (*ret).max_size = size
     }
     return ret;
@@ -47591,7 +47621,7 @@ pub unsafe extern "C" fn secp256k1_context_destroy(ctx: *mut secp256k1_context) 
  *
  *  When this function has not been called (or called with fn==NULL), then the
  *  default handler will be used. The library provides a default handler which
- *  writes the message to stderr and calls abort. This default handler can be
+ *  writes the message to stderr and calls panic!. This default handler can be
  *  replaced at link time if the preprocessor macro
  *  USE_EXTERNAL_DEFAULT_CALLBACKS is defined, which is the case if the build
  *  has been configured with --enable-external-default-callbacks. Then the
@@ -49293,7 +49323,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_combine(
     secp256k1_gej_set_infinity(&mut Qj);
     i = 0 as libc::c_int as size_t;
     while i < n {
-        secp256k1_pubkey_load(ctx, &mut Q, *pubnonces.offset(i as isize));
+        secp256k1_pubkey_load(ctx, &mut Q, *pubnonces.add(i));
         secp256k1_gej_add_ge(&mut Qj, &Qj, &Q);
         i = i.wrapping_add(1)
     }
@@ -49458,6 +49488,551 @@ pub unsafe extern "C" fn secp256k1_ecdh(
     }
     secp256k1_scalar_clear(&mut s);
     return ret;
+}
+
+/* *********************************************************************
+ * Copyright (c) 2013-2015 Pieter Wuille                              *
+ * Distributed under the MIT software license, see the accompanying   *
+ * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
+ **********************************************************************/
+unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_load(
+    _ctx: *const secp256k1_context,
+    r: *mut secp256k1_scalar,
+    s: *mut secp256k1_scalar,
+    recid: *mut libc::c_int,
+    sig: *const secp256k1_ecdsa_recoverable_signature,
+) {
+    if std::mem::size_of::<secp256k1_scalar>() == 32 {
+        /* When the secp256k1_scalar type is exactly 32 byte, use its
+         * representation inside secp256k1_ecdsa_signature, as conversion is very fast.
+         * Note that secp256k1_ecdsa_signature_save must use the same representation. */
+        memcpy(
+            r as *mut libc::c_void,
+            &*(*sig).data.as_ptr().offset(0 as libc::c_int as isize) as *const libc::c_uchar
+                as *const libc::c_void,
+            32,
+        );
+        memcpy(
+            s as *mut libc::c_void,
+            &*(*sig).data.as_ptr().offset(32 as libc::c_int as isize) as *const libc::c_uchar
+                as *const libc::c_void,
+            32,
+        );
+    } else {
+        secp256k1_scalar_set_b32(
+            r,
+            &*(*sig).data.as_ptr().offset(0 as libc::c_int as isize),
+            std::ptr::null_mut(),
+        );
+        secp256k1_scalar_set_b32(
+            s,
+            &*(*sig).data.as_ptr().offset(32 as libc::c_int as isize),
+            std::ptr::null_mut(),
+        );
+    }
+    *recid = (*sig).data[64 as libc::c_int as usize] as libc::c_int;
+}
+
+unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_save(
+    mut sig: *mut secp256k1_ecdsa_recoverable_signature,
+    r: *const secp256k1_scalar,
+    s: *const secp256k1_scalar,
+    recid: libc::c_int,
+) {
+    if std::mem::size_of::<secp256k1_scalar>() == 32 {
+        memcpy(
+            &mut *(*sig).data.as_mut_ptr().offset(0 as libc::c_int as isize) as *mut libc::c_uchar
+                as *mut libc::c_void,
+            r as *const libc::c_void,
+            32,
+        );
+        memcpy(
+            &mut *(*sig).data.as_mut_ptr().offset(32 as libc::c_int as isize) as *mut libc::c_uchar
+                as *mut libc::c_void,
+            s as *const libc::c_void,
+            32,
+        );
+    } else {
+        secp256k1_scalar_get_b32(
+            &mut *(*sig).data.as_mut_ptr().offset(0 as libc::c_int as isize),
+            r,
+        );
+        secp256k1_scalar_get_b32(
+            &mut *(*sig).data.as_mut_ptr().offset(32 as libc::c_int as isize),
+            s,
+        );
+    }
+    (*sig).data[64 as libc::c_int as usize] = recid as libc::c_uchar;
+}
+
+/* * Parse a compact ECDSA signature (64 bytes + recovery id).
+ *
+ *  Returns: 1 when the signature could be parsed, 0 otherwise
+ *  Args: ctx:     a secp256k1 context object
+ *  Out:  sig:     a pointer to a signature object
+ *  In:   input64: a pointer to a 64-byte compact signature
+ *        recid:   the recovery id (0, 1, 2 or 3)
+ */
+#[no_mangle]
+pub unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_parse_compact(
+    ctx: *const secp256k1_context,
+    sig: *mut secp256k1_ecdsa_recoverable_signature,
+    input64: *const libc::c_uchar,
+    recid: libc::c_int,
+) -> libc::c_int {
+    let mut r: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut s: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut ret: libc::c_int = 1 as libc::c_int;
+    let mut overflow: libc::c_int = 0 as libc::c_int;
+    if sig.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"sig != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if input64.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"input64 != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if !(recid >= 0 as libc::c_int && recid <= 3 as libc::c_int) as libc::c_int as libc::c_long != 0
+    {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"recid >= 0 && recid <= 3\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    secp256k1_scalar_set_b32(
+        &mut r,
+        &*input64.offset(0 as libc::c_int as isize),
+        &mut overflow,
+    );
+    ret &= (overflow == 0) as libc::c_int;
+    secp256k1_scalar_set_b32(
+        &mut s,
+        &*input64.offset(32 as libc::c_int as isize),
+        &mut overflow,
+    );
+    ret &= (overflow == 0) as libc::c_int;
+    if ret != 0 {
+        secp256k1_ecdsa_recoverable_signature_save(sig, &r, &s, recid);
+    } else {
+        memset(
+            sig as *mut libc::c_void,
+            0 as libc::c_int,
+            std::mem::size_of::<secp256k1_ecdsa_recoverable_signature>(),
+        );
+    }
+    return ret;
+}
+
+/* * Serialize an ECDSA signature in compact format (64 bytes + recovery id).
+ *
+ *  Returns: 1
+ *  Args: ctx:      a secp256k1 context object
+ *  Out:  output64: a pointer to a 64-byte array of the compact signature (cannot be NULL)
+ *        recid:    a pointer to an integer to hold the recovery id (can be NULL).
+ *  In:   sig:      a pointer to an initialized signature object (cannot be NULL)
+ */
+#[no_mangle]
+pub unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_serialize_compact(
+    ctx: *const secp256k1_context,
+    output64: *mut libc::c_uchar,
+    recid: *mut libc::c_int,
+    sig: *const secp256k1_ecdsa_recoverable_signature,
+) -> libc::c_int {
+    let mut r: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut s: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    if output64.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"output64 != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if sig.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"sig != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if recid.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"recid != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    secp256k1_ecdsa_recoverable_signature_load(ctx, &mut r, &mut s, recid, sig);
+    secp256k1_scalar_get_b32(&mut *output64.offset(0 as libc::c_int as isize), &r);
+    secp256k1_scalar_get_b32(&mut *output64.offset(32 as libc::c_int as isize), &s);
+    return 1 as libc::c_int;
+}
+/* * Convert a recoverable signature into a normal signature.
+ *
+ *  Returns: 1
+ *  Out: sig:    a pointer to a normal signature (cannot be NULL).
+ *  In:  sigin:  a pointer to a recoverable signature (cannot be NULL).
+ */
+#[no_mangle]
+pub unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_convert(
+    ctx: *const secp256k1_context,
+    sig: *mut secp256k1_ecdsa_signature,
+    sigin: *const secp256k1_ecdsa_recoverable_signature,
+) -> libc::c_int {
+    let mut r: secp256k1_scalar = secp256k1_scalar { d: [0; 4] }; /* brx comes from a scalar, so is less than the order; certainly less than p */
+    let mut s: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut recid: libc::c_int = 0;
+    if sig.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"sig != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if sigin.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"sigin != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    secp256k1_ecdsa_recoverable_signature_load(ctx, &mut r, &mut s, &mut recid, sigin);
+    secp256k1_ecdsa_signature_save(sig, &r, &s);
+    return 1 as libc::c_int;
+}
+unsafe extern "C" fn secp256k1_ecdsa_sig_recover(
+    ctx: *const secp256k1_ecmult_context,
+    sigr: *const secp256k1_scalar,
+    sigs: *const secp256k1_scalar,
+    pubkey: *mut secp256k1_ge,
+    message: *const secp256k1_scalar,
+    recid: libc::c_int,
+) -> libc::c_int {
+    let mut brx: [libc::c_uchar; 32] = [0; 32];
+    let mut fx: secp256k1_fe = secp256k1_fe {
+        n: [0; 5],
+        magnitude: 0,
+        normalized: 0,
+    };
+    let mut x: secp256k1_ge = secp256k1_ge {
+        x: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        y: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        infinity: 0,
+    };
+    let mut xj: secp256k1_gej = secp256k1_gej {
+        x: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        y: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        z: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        infinity: 0,
+    };
+    let mut rn: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut u1: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut u2: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut qj: secp256k1_gej = secp256k1_gej {
+        x: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        y: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        z: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        infinity: 0,
+    };
+    let mut r: libc::c_int = 0;
+    if secp256k1_scalar_is_zero(sigr) != 0 || secp256k1_scalar_is_zero(sigs) != 0 {
+        return 0 as libc::c_int;
+    }
+    secp256k1_scalar_get_b32(brx.as_mut_ptr(), sigr);
+    r = secp256k1_fe_set_b32(&mut fx, brx.as_mut_ptr());
+    if (r == 0) as libc::c_int as libc::c_long != 0 {
+        fprintf(
+            stderr,
+            b"%s:%d: %s\n\x00" as *const u8 as *const libc::c_char,
+            b"./src/modules/recovery/main_impl.h\x00" as *const u8 as *const libc::c_char,
+            103 as libc::c_int,
+            b"test condition failed: r\x00" as *const u8 as *const libc::c_char,
+        );
+        panic!();
+    }
+    if recid & 2 as libc::c_int != 0 {
+        if secp256k1_fe_cmp_var(&fx, &secp256k1_ecdsa_const_p_minus_order) >= 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+        secp256k1_fe_add(&mut fx, &secp256k1_ecdsa_const_order_as_fe);
+    }
+    if secp256k1_ge_set_xo_var(&mut x, &fx, recid & 1 as libc::c_int) == 0 {
+        return 0 as libc::c_int;
+    }
+    secp256k1_gej_set_ge(&mut xj, &x);
+    secp256k1_scalar_inverse_var(&mut rn, sigr);
+    secp256k1_scalar_mul(&mut u1, &rn, message);
+    secp256k1_scalar_negate(&mut u1, &u1);
+    secp256k1_scalar_mul(&mut u2, &rn, sigs);
+    secp256k1_ecmult(ctx, &mut qj, &xj, &u2, &u1);
+    secp256k1_ge_set_gej_var(pubkey, &mut qj);
+    return (secp256k1_gej_is_infinity(&qj) == 0) as libc::c_int;
+}
+/* * Create a recoverable ECDSA signature.
+ *
+ *  Returns: 1: signature created
+ *           0: the nonce generation function failed, or the private key was invalid.
+ *  Args:    ctx:    pointer to a context object, initialized for signing (cannot be NULL)
+ *  Out:     sig:    pointer to an array where the signature will be placed (cannot be NULL)
+ *  In:      msg32:  the 32-byte message hash being signed (cannot be NULL)
+ *           seckey: pointer to a 32-byte secret key (cannot be NULL)
+ *           noncefp:pointer to a nonce generation function. If NULL, secp256k1_nonce_function_default is used
+ *           ndata:  pointer to arbitrary data used by the nonce generation function (can be NULL)
+ */
+#[no_mangle]
+pub unsafe extern "C" fn secp256k1_ecdsa_sign_recoverable(
+    ctx: *const secp256k1_context,
+    signature: *mut secp256k1_ecdsa_recoverable_signature,
+    msg32: *const libc::c_uchar,
+    seckey: *const libc::c_uchar,
+    mut noncefp: secp256k1_nonce_function,
+    noncedata: *const libc::c_void,
+) -> libc::c_int {
+    let mut r: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut s: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut sec: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut non: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut msg: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut recid: libc::c_int = 0;
+    let mut ret: libc::c_int = 0 as libc::c_int;
+    let mut overflow: libc::c_int = 0 as libc::c_int;
+    if ctx.is_null() as libc::c_int as libc::c_long != 0 {
+        fprintf(
+            stderr,
+            b"%s:%d: %s\n\x00" as *const u8 as *const libc::c_char,
+            b"./src/modules/recovery/main_impl.h\x00" as *const u8 as *const libc::c_char,
+            129 as libc::c_int,
+            b"test condition failed: ctx != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        panic!();
+    }
+    if (secp256k1_ecmult_gen_context_is_built(&(*ctx).ecmult_gen_ctx) == 0) as libc::c_int
+        as libc::c_long
+        != 0
+    {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx)\x00" as *const u8
+                as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if msg32.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"msg32 != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if signature.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"signature != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if seckey.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"seckey != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if noncefp.is_none() {
+        noncefp = secp256k1_nonce_function_default
+    }
+    secp256k1_scalar_set_b32(&mut sec, seckey, &mut overflow);
+    /* Fail if the secret key is invalid. */
+    if overflow == 0 && secp256k1_scalar_is_zero(&sec) == 0 {
+        let mut nonce32: [libc::c_uchar; 32] = [0; 32];
+        let mut count: libc::c_uint = 0 as libc::c_int as libc::c_uint;
+        secp256k1_scalar_set_b32(&mut msg, msg32, std::ptr::null_mut());
+        loop {
+            ret = noncefp.expect("non-null function pointer")(
+                nonce32.as_mut_ptr(),
+                msg32,
+                seckey,
+                std::ptr::null(),
+                noncedata as *mut libc::c_void,
+                count,
+            );
+            if ret == 0 {
+                break;
+            }
+            secp256k1_scalar_set_b32(&mut non, nonce32.as_mut_ptr(), &mut overflow);
+            if overflow == 0 && secp256k1_scalar_is_zero(&non) == 0 {
+                if secp256k1_ecdsa_sig_sign(
+                    &(*ctx).ecmult_gen_ctx,
+                    &mut r,
+                    &mut s,
+                    &sec,
+                    &msg,
+                    &non,
+                    &mut recid,
+                ) != 0
+                {
+                    break;
+                }
+            }
+            count = count.wrapping_add(1)
+        }
+        memset(
+            nonce32.as_mut_ptr() as *mut libc::c_void,
+            0 as libc::c_int,
+            32,
+        );
+        secp256k1_scalar_clear(&mut msg);
+        secp256k1_scalar_clear(&mut non);
+        secp256k1_scalar_clear(&mut sec);
+    }
+    if ret != 0 {
+        secp256k1_ecdsa_recoverable_signature_save(signature, &r, &s, recid);
+    } else {
+        memset(
+            signature as *mut libc::c_void,
+            0 as libc::c_int,
+            std::mem::size_of::<secp256k1_ecdsa_recoverable_signature>(),
+        );
+    }
+    return ret;
+}
+/* * Recover an ECDSA public key from a signature.
+ *
+ *  Returns: 1: public key successfully recovered (which guarantees a correct signature).
+ *           0: otherwise.
+ *  Args:    ctx:        pointer to a context object, initialized for verification (cannot be NULL)
+ *  Out:     pubkey:     pointer to the recovered public key (cannot be NULL)
+ *  In:      sig:        pointer to initialized signature that supports pubkey recovery (cannot be NULL)
+ *           msg32:      the 32-byte message hash assumed to be signed (cannot be NULL)
+ */
+#[no_mangle]
+pub unsafe extern "C" fn secp256k1_ecdsa_recover(
+    ctx: *const secp256k1_context,
+    pubkey: *mut secp256k1_pubkey,
+    signature: *const secp256k1_ecdsa_recoverable_signature,
+    msg32: *const libc::c_uchar,
+) -> libc::c_int {
+    let mut q: secp256k1_ge = secp256k1_ge {
+        x: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        y: secp256k1_fe {
+            n: [0; 5],
+            magnitude: 0,
+            normalized: 0,
+        },
+        infinity: 0,
+    }; /* should have been caught in parse_compact */
+    let mut r: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut s: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut m: secp256k1_scalar = secp256k1_scalar { d: [0; 4] };
+    let mut recid: libc::c_int = 0;
+    if ctx.is_null() as libc::c_int as libc::c_long != 0 {
+        fprintf(
+            stderr,
+            b"%s:%d: %s\n\x00" as *const u8 as *const libc::c_char,
+            b"./src/modules/recovery/main_impl.h\x00" as *const u8 as *const libc::c_char,
+            175 as libc::c_int,
+            b"test condition failed: ctx != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        panic!();
+    }
+    if (secp256k1_ecmult_context_is_built(&(*ctx).ecmult_ctx) == 0) as libc::c_int as libc::c_long
+        != 0
+    {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"secp256k1_ecmult_context_is_built(&ctx->ecmult_ctx)\x00" as *const u8
+                as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if msg32.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"msg32 != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if signature.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"signature != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    if pubkey.is_null() as libc::c_int as libc::c_long != 0 {
+        secp256k1_callback_call(
+            &(*ctx).illegal_callback,
+            b"pubkey != NULL\x00" as *const u8 as *const libc::c_char,
+        );
+        return 0 as libc::c_int;
+    }
+    secp256k1_ecdsa_recoverable_signature_load(ctx, &mut r, &mut s, &mut recid, signature);
+    if !(recid >= 0 as libc::c_int && recid < 4 as libc::c_int) as libc::c_int as libc::c_long != 0
+    {
+        fprintf(
+            stderr,
+            b"%s:%d: %s\n\x00" as *const u8 as *const libc::c_char,
+            b"./src/modules/recovery/main_impl.h\x00" as *const u8 as *const libc::c_char,
+            182 as libc::c_int,
+            b"test condition failed: recid >= 0 && recid < 4\x00" as *const u8
+                as *const libc::c_char,
+        );
+        panic!();
+    }
+    secp256k1_scalar_set_b32(&mut m, msg32, std::ptr::null_mut());
+    if secp256k1_ecdsa_sig_recover(&(*ctx).ecmult_ctx, &r, &s, &mut q, &m, recid) != 0 {
+        secp256k1_pubkey_save(pubkey, &mut q);
+        return 1 as libc::c_int;
+    } else {
+        memset(
+            pubkey as *mut libc::c_void,
+            0 as libc::c_int,
+            std::mem::size_of::<secp256k1_pubkey>(),
+        );
+        return 0 as libc::c_int;
+    };
 }
 unsafe extern "C" fn run_static_initializers() {
     SECP256K1_ECMULT_CONTEXT_PREALLOCATED_SIZE = std::mem::size_of::<secp256k1_ge_storage>()

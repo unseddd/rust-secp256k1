@@ -166,7 +166,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
-        if lenbyte >= ::std::mem::size_of::<size_t>() {
+        if lenbyte >= core::mem::size_of::<size_t>() {
             return 0 as libc::c_int;
         }
         rlen = 0;
@@ -204,7 +204,7 @@ pub unsafe extern "C" fn ecdsa_signature_parse_der_lax(
             pos = pos.wrapping_add(1);
             lenbyte = lenbyte.wrapping_sub(1)
         }
-        if lenbyte >= ::std::mem::size_of::<size_t>() {
+        if lenbyte >= core::mem::size_of::<size_t>() {
             return 0;
         }
         slen = 0;

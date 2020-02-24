@@ -1,3 +1,4 @@
+#![no_std]
 #![allow(unused_assignments)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]

@@ -20,7 +20,7 @@ pub unsafe fn memset(
     constant: libc::c_int,
     size: usize,
 ) -> *mut libc::c_void {
-    std::ptr::write_bytes(ptr as *mut u8, constant as u8, size);
+    core::ptr::write_bytes(ptr as *mut u8, constant as u8, size);
     ptr
 }
 
@@ -29,7 +29,7 @@ pub unsafe fn memcpy(
     src: *const libc::c_void,
     size: usize,
 ) -> *mut libc::c_void {
-    std::ptr::copy_nonoverlapping(src as *const u8, dst as *mut u8, size);
+    core::ptr::copy_nonoverlapping(src as *const u8, dst as *mut u8, size);
     dst
 }
 
@@ -391,7 +391,7 @@ unsafe extern "C" fn manual_alloc(
         .wrapping_sub(1)
         .wrapping_div(16)
         .wrapping_mul(16);
-    let mut ret: *mut libc::c_void = std::ptr::null_mut::<libc::c_void>();
+    let mut ret: *mut libc::c_void = core::ptr::null_mut::<libc::c_void>();
     if prealloc_ptr.is_null() {
         fprintf(
             stderr,
@@ -5089,7 +5089,7 @@ unsafe extern "C" fn secp256k1_scalar_inverse(
     r: *mut secp256k1_scalar,
     x: *const secp256k1_scalar,
 ) {
-    let mut t: *mut secp256k1_scalar = std::ptr::null_mut::<secp256k1_scalar>();
+    let mut t: *mut secp256k1_scalar = core::ptr::null_mut::<secp256k1_scalar>();
     let mut i: libc::c_int = 0;
     /* First compute xN as x ^ (2^N - 1) for some values of N,
      * and uM as x ^ M for some values of M. */
@@ -6488,7 +6488,7 @@ unsafe extern "C" fn secp256k1_gej_add_zinv_var(
     secp256k1_fe_add(&mut i, &s2);
     if secp256k1_fe_normalizes_to_zero_var(&mut h) as libc::c_int != 0 {
         if secp256k1_fe_normalizes_to_zero_var(&mut i) as libc::c_int != 0 {
-            secp256k1_gej_double_var(r, a, std::ptr::null_mut::<secp256k1_fe>());
+            secp256k1_gej_double_var(r, a, core::ptr::null_mut::<secp256k1_fe>());
         } else {
             (*r).infinity = 1 as libc::c_int
         }
@@ -6952,7 +6952,7 @@ unsafe extern "C" fn secp256k1_ecmult_odd_multiples_table(
         );
         panic!();
     }
-    secp256k1_gej_double_var(&mut d, a, std::ptr::null_mut::<secp256k1_fe>());
+    secp256k1_gej_double_var(&mut d, a, core::ptr::null_mut::<secp256k1_fe>());
     /*
      * Perform the additions on an isomorphism where 'd' is affine: drop the z coordinate
      * of 'd', and scale the 1P starting value's x/y coordinates without changing its z.
@@ -7138,7 +7138,7 @@ unsafe extern "C" fn secp256k1_ecmult_odd_multiples_table_storage_var(
         );
         panic!();
     }
-    secp256k1_gej_double_var(&mut d, a, std::ptr::null_mut::<secp256k1_fe>());
+    secp256k1_gej_double_var(&mut d, a, core::ptr::null_mut::<secp256k1_fe>());
     /* First, we perform all the additions in an isomorphic curve obtained by multiplying
      * all `z` coordinates by 1/`d.z`. In these coordinates `d` is affine so we can use
      * `secp256k1_gej_add_ge_var` to perform the additions. For each addition, we store
@@ -7207,7 +7207,7 @@ unsafe extern "C" fn secp256k1_ecmult_odd_multiples_table_storage_var(
             magnitude: 0,
             normalized: 0,
         };
-        let mut rzr: *const secp256k1_fe = std::ptr::null::<secp256k1_fe>();
+        let mut rzr: *const secp256k1_fe = core::ptr::null::<secp256k1_fe>();
         i -= 1;
         secp256k1_ge_from_storage(&mut p_ge, &*pre.offset(i as isize));
         /* For each remaining point, we extract the z-ratio from the stored
@@ -7264,7 +7264,7 @@ unsafe extern "C" fn secp256k1_ecmult_odd_multiples_table_storage_var(
 // Initialized in run_static_initializers
 static mut SECP256K1_ECMULT_CONTEXT_PREALLOCATED_SIZE: size_t = 524288;
 unsafe extern "C" fn secp256k1_ecmult_context_init(mut ctx: *mut secp256k1_ecmult_context) {
-    (*ctx).pre_g = std::ptr::null_mut();
+    (*ctx).pre_g = core::ptr::null_mut();
 }
 unsafe extern "C" fn secp256k1_ecmult_context_build(
     mut ctx: *mut secp256k1_ecmult_context,
@@ -7295,10 +7295,10 @@ unsafe extern "C" fn secp256k1_ecmult_context_build(
     }
     /* get the generator */
     secp256k1_gej_set_ge(&mut gj, &secp256k1_ge_const_g);
-    let size: size_t = (std::mem::size_of::<secp256k1_ge_storage>())
+    let size: size_t = (core::mem::size_of::<secp256k1_ge_storage>())
         .wrapping_mul(((1 as libc::c_int) << 15 as libc::c_int - 2 as libc::c_int) as size_t);
     /* check for overflow */
-    if !(size.wrapping_div(std::mem::size_of::<secp256k1_ge_storage>())
+    if !(size.wrapping_div(core::mem::size_of::<secp256k1_ge_storage>())
         == ((1 as libc::c_int) << 15 as libc::c_int - 2 as libc::c_int) as size_t)
         as libc::c_int as libc::c_long
         != 0
@@ -7313,7 +7313,7 @@ unsafe extern "C" fn secp256k1_ecmult_context_build(
     }
     (*ctx).pre_g = manual_alloc(
         prealloc,
-        (std::mem::size_of::<secp256k1_ge_storage>())
+        (core::mem::size_of::<secp256k1_ge_storage>())
             .wrapping_mul(((1 as libc::c_int) << 15 as libc::c_int - 2 as libc::c_int) as size_t),
         base,
         prealloc_size,
@@ -7340,7 +7340,7 @@ unsafe extern "C" fn secp256k1_ecmult_context_finalize_memcpy(
 unsafe extern "C" fn secp256k1_ecmult_context_is_built(
     ctx: *const secp256k1_ecmult_context,
 ) -> libc::c_int {
-    return ((*ctx).pre_g != std::ptr::null_mut::<libc::c_void>() as *mut [secp256k1_ge_storage; 0])
+    return ((*ctx).pre_g != core::ptr::null_mut::<libc::c_void>() as *mut [secp256k1_ge_storage; 0])
         as libc::c_int;
 }
 unsafe extern "C" fn secp256k1_ecmult_context_clear(ctx: *mut secp256k1_ecmult_context) {
@@ -7408,7 +7408,7 @@ unsafe extern "C" fn secp256k1_ecmult_wnaf(
     memset(
         wnaf as *mut libc::c_void,
         0 as libc::c_int,
-        (len as size_t).wrapping_mul(std::mem::size_of::<libc::c_int>()),
+        (len as size_t).wrapping_mul(core::mem::size_of::<libc::c_int>()),
     );
     s = *a;
     if secp256k1_scalar_get_bits(
@@ -7615,7 +7615,7 @@ unsafe extern "C" fn secp256k1_ecmult_strauss_wnaf(
     i = bits - 1 as libc::c_int;
     while i >= 0 as libc::c_int {
         let mut n: libc::c_int = 0;
-        secp256k1_gej_double_var(r, r, std::ptr::null_mut::<secp256k1_fe>());
+        secp256k1_gej_double_var(r, r, core::ptr::null_mut::<secp256k1_fe>());
         np = 0 as libc::c_int;
         while np < no {
             if i < (*(*state).ps.offset(np as isize)).bits_na && {
@@ -7681,7 +7681,7 @@ unsafe extern "C" fn secp256k1_ecmult_strauss_wnaf(
                         .offset(((-n - 1 as libc::c_int) / 2 as libc::c_int) as isize);
                     secp256k1_fe_negate(&mut tmpa.y, &tmpa.y, 1 as libc::c_int);
                 }
-                secp256k1_gej_add_ge_var(r, r, &tmpa, std::ptr::null_mut());
+                secp256k1_gej_add_ge_var(r, r, &tmpa, core::ptr::null_mut());
             }
             np += 1
         }
@@ -7803,10 +7803,10 @@ unsafe extern "C" fn secp256k1_ecmult(
         input_pos: 0,
     }; 1];
     let mut state: secp256k1_strauss_state = secp256k1_strauss_state {
-        prej: std::ptr::null_mut::<secp256k1_gej>(),
-        zr: std::ptr::null_mut::<secp256k1_fe>(),
-        pre_a: std::ptr::null_mut::<secp256k1_ge>(),
-        ps: std::ptr::null_mut::<secp256k1_strauss_point_state>(),
+        prej: core::ptr::null_mut::<secp256k1_gej>(),
+        zr: core::ptr::null_mut::<secp256k1_fe>(),
+        pre_a: core::ptr::null_mut::<secp256k1_ge>(),
+        ps: core::ptr::null_mut::<secp256k1_strauss_point_state>(),
     };
     state.prej = prej.as_mut_ptr();
     state.zr = zr.as_mut_ptr();
@@ -8036,7 +8036,7 @@ unsafe extern "C" fn secp256k1_ecmult_const(
     }
     let mut m: libc::c_int = 0;
     let mask: libc::c_int = i
-        >> std::mem::size_of::<libc::c_int>()
+        >> core::mem::size_of::<libc::c_int>()
             .wrapping_mul(8)
             .wrapping_sub(1);
     let abs_n: libc::c_int = i + mask ^ mask;
@@ -8119,7 +8119,7 @@ unsafe extern "C" fn secp256k1_ecmult_const(
         n = wnaf_1[i as usize];
         let mut m_0: libc::c_int = 0;
         let mask_0: libc::c_int = n
-            >> (std::mem::size_of::<libc::c_int>())
+            >> (core::mem::size_of::<libc::c_int>())
                 .wrapping_mul(8)
                 .wrapping_sub(1);
         let abs_n_0: libc::c_int = n + mask_0 ^ mask_0;
@@ -8229,7 +8229,7 @@ unsafe extern "C" fn secp256k1_ecmult_const(
         infinity: 0,
     };
     secp256k1_gej_set_ge(&mut tmpj, &correction);
-    secp256k1_gej_double_var(&mut tmpj, &tmpj, std::ptr::null_mut());
+    secp256k1_gej_double_var(&mut tmpj, &tmpj, core::ptr::null_mut());
     secp256k1_ge_set_gej(&mut correction, &mut tmpj);
     secp256k1_ge_to_storage(&mut correction_1_stor, a);
     secp256k1_ge_to_storage(&mut a2_stor, &correction);
@@ -8251,7 +8251,7 @@ unsafe extern "C" fn secp256k1_ecmult_const(
  **********************************************************************/
 static mut SECP256K1_ECMULT_GEN_CONTEXT_PREALLOCATED_SIZE: size_t = 0 as libc::c_int as size_t;
 unsafe extern "C" fn secp256k1_ecmult_gen_context_init(mut ctx: *mut secp256k1_ecmult_gen_context) {
-    (*ctx).prec = std::ptr::null_mut();
+    (*ctx).prec = core::ptr::null_mut();
 }
 /* * Multiply with the generator: R = a*G */
 /* Blind scalar/point multiplication by computing (n-b)G + bG instead of nG. */
@@ -8294,7 +8294,7 @@ unsafe extern "C" fn secp256k1_ecmult_gen(
     memset(
         &mut adds as *mut secp256k1_ge_storage as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_ge_storage>(),
+        core::mem::size_of::<secp256k1_ge_storage>(),
     );
     *r = (*ctx).initial;
     secp256k1_scalar_add(&mut gnb, gn, &(*ctx).blind);
@@ -8310,8 +8310,8 @@ unsafe extern "C" fn secp256k1_ecmult_gen(
         while i < (1 as libc::c_int) << 4 as libc::c_int {
             secp256k1_ge_storage_cmov(
                 &mut adds,
-                &*(*(*(*ctx).prec).as_mut_ptr().offset(j as isize))
-                    .as_mut_ptr()
+                &*(*(*(*ctx).prec).as_ptr().offset(j as isize))
+                    .as_ptr()
                     .offset(i as isize),
                 (i == bits) as libc::c_int,
             );
@@ -8398,7 +8398,7 @@ unsafe extern "C" fn secp256k1_ecmult_gen_blind(
     memset(
         keydata.as_mut_ptr() as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<[libc::c_uchar; 64]>(),
+        core::mem::size_of::<[libc::c_uchar; 64]>(),
     );
     loop
     /* Retry for out of range results to achieve uniformity. */
@@ -10333,7 +10333,7 @@ unsafe extern "C" fn secp256k1_hmac_sha256_initialize(
 ) {
     let mut n: size_t = 0;
     let mut rkey: [libc::c_uchar; 64] = [0; 64];
-    if keylen <= std::mem::size_of::<[libc::c_uchar; 64]>() {
+    if keylen <= core::mem::size_of::<[libc::c_uchar; 64]>() {
         memcpy(
             rkey.as_mut_ptr() as *mut libc::c_void,
             key as *const libc::c_void,
@@ -10342,7 +10342,7 @@ unsafe extern "C" fn secp256k1_hmac_sha256_initialize(
         memset(
             rkey.as_mut_ptr().add(keylen) as *mut libc::c_void,
             0 as libc::c_int,
-            (std::mem::size_of::<[libc::c_uchar; 64]>()).wrapping_sub(keylen),
+            (core::mem::size_of::<[libc::c_uchar; 64]>()).wrapping_sub(keylen),
         );
     } else {
         let mut sha256: secp256k1_sha256 = secp256k1_sha256 {
@@ -10361,18 +10361,18 @@ unsafe extern "C" fn secp256k1_hmac_sha256_initialize(
     }
     secp256k1_sha256_initialize(&mut (*hash).outer);
     n = 0 as libc::c_int as size_t;
-    while n < std::mem::size_of::<[libc::c_uchar; 64]>() {
+    while n < core::mem::size_of::<[libc::c_uchar; 64]>() {
         rkey[n as usize] = (rkey[n as usize] as libc::c_int ^ 0x5c as libc::c_int) as libc::c_uchar;
         n = n.wrapping_add(1)
     }
     secp256k1_sha256_write(
         &mut (*hash).outer,
         rkey.as_mut_ptr(),
-        std::mem::size_of::<[libc::c_uchar; 64]>(),
+        core::mem::size_of::<[libc::c_uchar; 64]>(),
     );
     secp256k1_sha256_initialize(&mut (*hash).inner);
     n = 0 as libc::c_int as size_t;
-    while n < std::mem::size_of::<[libc::c_uchar; 64]>() {
+    while n < core::mem::size_of::<[libc::c_uchar; 64]>() {
         rkey[n as usize] = (rkey[n as usize] as libc::c_int
             ^ (0x5c as libc::c_int ^ 0x36 as libc::c_int))
             as libc::c_uchar;
@@ -10381,12 +10381,12 @@ unsafe extern "C" fn secp256k1_hmac_sha256_initialize(
     secp256k1_sha256_write(
         &mut (*hash).inner,
         rkey.as_mut_ptr(),
-        std::mem::size_of::<[libc::c_uchar; 64]>(),
+        core::mem::size_of::<[libc::c_uchar; 64]>(),
     );
     memset(
         rkey.as_mut_ptr() as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<[libc::c_uchar; 64]>(),
+        core::mem::size_of::<[libc::c_uchar; 64]>(),
     );
 }
 unsafe extern "C" fn secp256k1_sha256_initialize(mut hash: *mut secp256k1_sha256) {
@@ -10455,7 +10455,7 @@ unsafe extern "C" fn secp256k1_ecmult_gen_context_build(
         return;
     }
     (*ctx).prec = secp256k1_ecmult_static_context.as_ptr() as *mut [[secp256k1_ge_storage; 16]; 64];
-    secp256k1_ecmult_gen_blind(ctx, std::ptr::null::<libc::c_uchar>());
+    secp256k1_ecmult_gen_blind(ctx, core::ptr::null::<libc::c_uchar>());
 }
 static mut secp256k1_ecmult_static_context: [[secp256k1_ge_storage; 16]; 64] = [
     [
@@ -46442,7 +46442,7 @@ unsafe extern "C" fn secp256k1_ecmult_gen_context_clear(
 ) {
     secp256k1_scalar_clear(&mut (*ctx).blind);
     secp256k1_gej_clear(&mut (*ctx).initial);
-    (*ctx).prec = std::ptr::null_mut();
+    (*ctx).prec = core::ptr::null_mut();
 }
 /* *********************************************************************
  * Copyright (c) 2013-2015 Pieter Wuille                              *
@@ -46559,7 +46559,7 @@ unsafe extern "C" fn secp256k1_der_read_len(
         /* Not the shortest possible length encoding. */
         return 0 as libc::c_int;
     }
-    if lenleft > std::mem::size_of::<size_t>() {
+    if lenleft > core::mem::size_of::<size_t>() {
         /* The resulting length would exceed the range of a size_t, so
          * certainly longer than the passed array size.
          */
@@ -47128,7 +47128,7 @@ unsafe extern "C" fn secp256k1_scratch_create(
     error_callback: *const secp256k1_callback,
     size: size_t,
 ) -> *mut secp256k1_scratch {
-    let base_alloc: size_t = (std::mem::size_of::<secp256k1_scratch>())
+    let base_alloc: size_t = (core::mem::size_of::<secp256k1_scratch>())
         .wrapping_add(16)
         .wrapping_sub(1)
         .wrapping_div(16)
@@ -47139,7 +47139,7 @@ unsafe extern "C" fn secp256k1_scratch_create(
         memset(
             ret as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_scratch>(),
+            core::mem::size_of::<secp256k1_scratch>(),
         );
         memcpy(
             (*ret).magic.as_mut_ptr() as *mut libc::c_void,
@@ -47183,7 +47183,7 @@ unsafe extern "C" fn secp256k1_scratch_destroy(
         memset(
             (*scratch).magic.as_mut_ptr() as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<[libc::c_uchar; 8]>(),
+            core::mem::size_of::<[libc::c_uchar; 8]>(),
         );
         free(scratch as *mut libc::c_void);
     };
@@ -47221,25 +47221,25 @@ static mut default_illegal_callback: secp256k1_callback = secp256k1_callback {
         secp256k1_default_illegal_callback_fn
             as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> (),
     ),
-    data: std::ptr::null(),
+    data: core::ptr::null(),
 };
 static mut default_error_callback: secp256k1_callback = secp256k1_callback {
     fn_0: Some(
         secp256k1_default_error_callback_fn
             as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> (),
     ),
-    data: std::ptr::null(),
+    data: core::ptr::null(),
 };
 static mut secp256k1_context_no_precomp_: secp256k1_context = secp256k1_context_struct {
     ecmult_ctx: {
         let init = secp256k1_ecmult_context {
-            pre_g: std::ptr::null_mut(),
+            pre_g: core::ptr::null_mut(),
         };
         init
     },
     ecmult_gen_ctx: {
         let init = secp256k1_ecmult_gen_context {
-            prec: std::ptr::null_mut(),
+            prec: core::ptr::null_mut(),
             blind: secp256k1_scalar { d: [0; 4] },
             initial: secp256k1_gej {
                 x: secp256k1_fe {
@@ -47268,7 +47268,7 @@ static mut secp256k1_context_no_precomp_: secp256k1_context = secp256k1_context_
                 secp256k1_default_illegal_callback_fn
                     as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void),
             ),
-            data: std::ptr::null(),
+            data: core::ptr::null(),
         };
         init
     },
@@ -47278,7 +47278,7 @@ static mut secp256k1_context_no_precomp_: secp256k1_context = secp256k1_context_
                 secp256k1_default_error_callback_fn
                     as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void),
             ),
-            data: std::ptr::null(),
+            data: core::ptr::null(),
         };
         init
     },
@@ -47312,7 +47312,7 @@ pub static mut secp256k1_context_no_precomp: *const secp256k1_context =
  */
 #[no_mangle]
 pub unsafe extern "C" fn secp256k1_context_preallocated_size(flags: libc::c_uint) -> size_t {
-    let mut ret: size_t = (std::mem::size_of::<secp256k1_context>())
+    let mut ret: size_t = (core::mem::size_of::<secp256k1_context>())
         .wrapping_add(16)
         .wrapping_sub(1)
         .wrapping_div(16)
@@ -47342,7 +47342,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_size(flags: libc::c_uint
 pub unsafe extern "C" fn secp256k1_context_preallocated_clone_size(
     ctx: *const secp256k1_context,
 ) -> size_t {
-    let mut ret: size_t = (std::mem::size_of::<secp256k1_context>())
+    let mut ret: size_t = (core::mem::size_of::<secp256k1_context>())
         .wrapping_add(16)
         .wrapping_sub(1)
         .wrapping_div(16)
@@ -47397,7 +47397,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_create(
 ) -> *mut secp256k1_context {
     let base: *mut libc::c_void = prealloc;
     let mut prealloc_size: size_t = 0;
-    let mut ret: *mut secp256k1_context = std::ptr::null_mut::<secp256k1_context>();
+    let mut ret: *mut secp256k1_context = core::ptr::null_mut::<secp256k1_context>();
     if prealloc.is_null() {
         fprintf(
             stderr,
@@ -47411,7 +47411,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_create(
     prealloc_size = secp256k1_context_preallocated_size(flags);
     ret = manual_alloc(
         &mut prealloc,
-        std::mem::size_of::<secp256k1_context>(),
+        core::mem::size_of::<secp256k1_context>(),
         base,
         prealloc_size,
     ) as *mut secp256k1_context;
@@ -47422,7 +47422,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_create(
             &(*ret).illegal_callback,
             b"Invalid flags\x00" as *const u8 as *const libc::c_char,
         );
-        return std::ptr::null_mut();
+        return core::ptr::null_mut();
     }
     secp256k1_ecmult_context_init(&mut (*ret).ecmult_ctx);
     secp256k1_ecmult_gen_context_init(&mut (*ret).ecmult_gen_ctx);
@@ -47456,12 +47456,12 @@ pub unsafe extern "C" fn secp256k1_context_create(flags: libc::c_uint) -> *mut s
     let ctx: *mut secp256k1_context =
         checked_malloc(&default_error_callback, prealloc_size) as *mut secp256k1_context;
     if (secp256k1_context_preallocated_create(ctx as *mut libc::c_void, flags)
-        == std::ptr::null_mut::<libc::c_void>() as *mut secp256k1_context) as libc::c_int
+        == core::ptr::null_mut::<libc::c_void>() as *mut secp256k1_context) as libc::c_int
         as libc::c_long
         != 0
     {
         free(ctx as *mut libc::c_void);
-        return std::ptr::null_mut();
+        return core::ptr::null_mut();
     }
     return ctx;
 }
@@ -47487,7 +47487,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_clone(
     prealloc: *mut libc::c_void,
 ) -> *mut secp256k1_context {
     let mut prealloc_size: size_t = 0;
-    let mut ret: *mut secp256k1_context = std::ptr::null_mut::<secp256k1_context>();
+    let mut ret: *mut secp256k1_context = core::ptr::null_mut::<secp256k1_context>();
     if ctx.is_null() {
         fprintf(
             stderr,
@@ -47503,7 +47503,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_clone(
             &(*ctx).illegal_callback,
             b"prealloc != NULL\x00" as *const u8 as *const libc::c_char,
         );
-        return std::ptr::null_mut();
+        return core::ptr::null_mut();
     }
     prealloc_size = secp256k1_context_preallocated_clone_size(ctx);
     ret = prealloc as *mut secp256k1_context;
@@ -47532,7 +47532,7 @@ pub unsafe extern "C" fn secp256k1_context_preallocated_clone(
 pub unsafe extern "C" fn secp256k1_context_clone(
     ctx: *const secp256k1_context,
 ) -> *mut secp256k1_context {
-    let mut ret: *mut secp256k1_context = std::ptr::null_mut::<secp256k1_context>();
+    let mut ret: *mut secp256k1_context = core::ptr::null_mut::<secp256k1_context>();
     let mut prealloc_size: size_t = 0;
     if ctx.is_null() {
         fprintf(
@@ -47761,7 +47761,7 @@ unsafe extern "C" fn secp256k1_pubkey_load(
     ge: *mut secp256k1_ge,
     pubkey: *const secp256k1_pubkey,
 ) -> libc::c_int {
-    if std::mem::size_of::<secp256k1_ge_storage>() == 64 {
+    if core::mem::size_of::<secp256k1_ge_storage>() == 64 {
         /* When the secp256k1_ge_storage type is exactly 64 byte, use its
          * representation inside secp256k1_pubkey, as conversion is very fast.
          * Note that secp256k1_pubkey_save must use the same representation. */
@@ -47773,7 +47773,7 @@ unsafe extern "C" fn secp256k1_pubkey_load(
             &mut s as *mut secp256k1_ge_storage as *mut libc::c_void,
             &*(*pubkey).data.as_ptr().offset(0 as libc::c_int as isize) as *const libc::c_uchar
                 as *const libc::c_void,
-            std::mem::size_of::<secp256k1_ge_storage>(),
+            core::mem::size_of::<secp256k1_ge_storage>(),
         );
         secp256k1_ge_from_storage(ge, &s);
     } else {
@@ -47802,7 +47802,7 @@ unsafe extern "C" fn secp256k1_pubkey_load(
     return 1 as libc::c_int;
 }
 unsafe extern "C" fn secp256k1_pubkey_save(pubkey: *mut secp256k1_pubkey, ge: *mut secp256k1_ge) {
-    if std::mem::size_of::<secp256k1_ge_storage>() == 64 {
+    if core::mem::size_of::<secp256k1_ge_storage>() == 64 {
         let mut s: secp256k1_ge_storage = secp256k1_ge_storage {
             x: secp256k1_fe_storage { n: [0; 4] },
             y: secp256k1_fe_storage { n: [0; 4] },
@@ -47815,7 +47815,7 @@ unsafe extern "C" fn secp256k1_pubkey_save(pubkey: *mut secp256k1_pubkey, ge: *m
                 .offset(0 as libc::c_int as isize) as *mut libc::c_uchar
                 as *mut libc::c_void,
             &mut s as *mut secp256k1_ge_storage as *const libc::c_void,
-            std::mem::size_of::<secp256k1_ge_storage>(),
+            core::mem::size_of::<secp256k1_ge_storage>(),
         );
     } else {
         if (secp256k1_ge_is_infinity(ge) as libc::c_int != 0) as libc::c_int as libc::c_long != 0 {
@@ -47889,7 +47889,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_parse(
     memset(
         pubkey as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_pubkey>(),
+        core::mem::size_of::<secp256k1_pubkey>(),
     );
     if input.is_null() {
         secp256k1_callback_call(
@@ -48018,7 +48018,7 @@ unsafe extern "C" fn secp256k1_ecdsa_signature_load(
     s: *mut secp256k1_scalar,
     sig: *const secp256k1_ecdsa_signature,
 ) {
-    if std::mem::size_of::<secp256k1_scalar>() == 32 {
+    if core::mem::size_of::<secp256k1_scalar>() == 32 {
         /* When the secp256k1_scalar type is exactly 32 byte, use its
          * representation inside secp256k1_ecdsa_signature, as conversion is very fast.
          * Note that secp256k1_ecdsa_signature_save must use the same representation. */
@@ -48038,12 +48038,12 @@ unsafe extern "C" fn secp256k1_ecdsa_signature_load(
         secp256k1_scalar_set_b32(
             r,
             &*(*sig).data.as_ptr().offset(0 as libc::c_int as isize),
-            std::ptr::null_mut(),
+            core::ptr::null_mut(),
         );
         secp256k1_scalar_set_b32(
             s,
             &*(*sig).data.as_ptr().offset(32 as isize),
-            std::ptr::null_mut(),
+            core::ptr::null_mut(),
         );
     };
 }
@@ -48052,7 +48052,7 @@ unsafe extern "C" fn secp256k1_ecdsa_signature_save(
     r: *const secp256k1_scalar,
     s: *const secp256k1_scalar,
 ) {
-    if std::mem::size_of::<secp256k1_scalar>() == 32 {
+    if core::mem::size_of::<secp256k1_scalar>() == 32 {
         memcpy(
             &mut *(*sig).data.as_mut_ptr().offset(0 as libc::c_int as isize) as *mut libc::c_uchar
                 as *mut libc::c_void,
@@ -48128,7 +48128,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_signature_parse_der(
         memset(
             sig as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_ecdsa_signature>(),
+            core::mem::size_of::<secp256k1_ecdsa_signature>(),
         );
         return 0 as libc::c_int;
     };
@@ -48196,7 +48196,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_signature_parse_compact(
         memset(
             sig as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_ecdsa_signature>(),
+            core::mem::size_of::<secp256k1_ecdsa_signature>(),
         );
     }
     return ret;
@@ -48461,7 +48461,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_verify(
         );
         return 0 as libc::c_int;
     }
-    secp256k1_scalar_set_b32(&mut m, msg32, std::ptr::null_mut::<libc::c_int>());
+    secp256k1_scalar_set_b32(&mut m, msg32, core::ptr::null_mut::<libc::c_int>());
     secp256k1_ecdsa_signature_load(ctx, &mut r, &mut s, sig);
     return (secp256k1_scalar_is_high(&s) == 0
         && secp256k1_pubkey_load(ctx, &mut q, pubkey) as libc::c_int != 0
@@ -48533,7 +48533,7 @@ unsafe extern "C" fn nonce_function_rfc6979(
     memset(
         keydata.as_mut_ptr() as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<[libc::c_uchar; 112]>(),
+        core::mem::size_of::<[libc::c_uchar; 112]>(),
     );
     i = 0 as libc::c_int as libc::c_uint;
     while i <= counter {
@@ -48652,13 +48652,13 @@ pub unsafe extern "C" fn secp256k1_ecdsa_sign(
     if overflow == 0 && secp256k1_scalar_is_zero(&sec) == 0 {
         let mut nonce32: [libc::c_uchar; 32] = [0; 32];
         let mut count: libc::c_uint = 0 as libc::c_int as libc::c_uint;
-        secp256k1_scalar_set_b32(&mut msg, msg32, std::ptr::null_mut());
+        secp256k1_scalar_set_b32(&mut msg, msg32, core::ptr::null_mut());
         loop {
             ret = noncefp.expect("non-null function pointer")(
                 nonce32.as_mut_ptr(),
                 msg32,
                 seckey,
-                std::ptr::null(),
+                core::ptr::null(),
                 noncedata as *mut libc::c_void,
                 count,
             );
@@ -48674,7 +48674,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_sign(
                     &sec,
                     &msg,
                     &non,
-                    std::ptr::null_mut(),
+                    core::ptr::null_mut(),
                 ) as libc::c_int
                     != 0
                 {
@@ -48698,7 +48698,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_sign(
         memset(
             signature as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_ecdsa_signature>(),
+            core::mem::size_of::<secp256k1_ecdsa_signature>(),
         );
     }
     return ret;
@@ -48808,7 +48808,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_create(
     memset(
         pubkey as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_pubkey>(),
+        core::mem::size_of::<secp256k1_pubkey>(),
     );
     if (secp256k1_ecmult_gen_context_is_built(&(*ctx).ecmult_gen_ctx) == 0) as libc::c_int
         as libc::c_long
@@ -48867,7 +48867,7 @@ pub unsafe extern "C" fn secp256k1_ec_privkey_negate(
         );
         return 0 as libc::c_int;
     }
-    secp256k1_scalar_set_b32(&mut sec, seckey, std::ptr::null_mut::<libc::c_int>());
+    secp256k1_scalar_set_b32(&mut sec, seckey, core::ptr::null_mut::<libc::c_int>());
     secp256k1_scalar_negate(&mut sec, &sec);
     secp256k1_scalar_get_b32(seckey, &sec);
     secp256k1_scalar_clear(&mut sec);
@@ -48919,7 +48919,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_negate(
     memset(
         pubkey as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_pubkey>(),
+        core::mem::size_of::<secp256k1_pubkey>(),
     );
     if ret != 0 {
         secp256k1_ge_neg(&mut p, &p);
@@ -48971,7 +48971,7 @@ pub unsafe extern "C" fn secp256k1_ec_privkey_tweak_add(
         return 0 as libc::c_int;
     }
     secp256k1_scalar_set_b32(&mut term, tweak, &mut overflow);
-    secp256k1_scalar_set_b32(&mut sec, seckey, std::ptr::null_mut::<libc::c_int>());
+    secp256k1_scalar_set_b32(&mut sec, seckey, core::ptr::null_mut::<libc::c_int>());
     ret = (overflow == 0 && secp256k1_eckey_privkey_tweak_add(&mut sec, &term) as libc::c_int != 0)
         as libc::c_int;
     memset(seckey as *mut libc::c_void, 0 as libc::c_int, 32);
@@ -49054,7 +49054,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_tweak_add(
     memset(
         pubkey as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_pubkey>(),
+        core::mem::size_of::<secp256k1_pubkey>(),
     );
     if ret != 0 {
         if secp256k1_eckey_pubkey_tweak_add(&(*ctx).ecmult_ctx, &mut p, &term) as libc::c_int != 0 {
@@ -49107,7 +49107,7 @@ pub unsafe extern "C" fn secp256k1_ec_privkey_tweak_mul(
         return 0 as libc::c_int;
     }
     secp256k1_scalar_set_b32(&mut factor, tweak, &mut overflow);
-    secp256k1_scalar_set_b32(&mut sec, seckey, std::ptr::null_mut::<libc::c_int>());
+    secp256k1_scalar_set_b32(&mut sec, seckey, core::ptr::null_mut::<libc::c_int>());
     ret = (overflow == 0
         && secp256k1_eckey_privkey_tweak_mul(&mut sec, &factor) as libc::c_int != 0)
         as libc::c_int;
@@ -49189,7 +49189,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_tweak_mul(
     memset(
         pubkey as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_pubkey>(),
+        core::mem::size_of::<secp256k1_pubkey>(),
     );
     if ret != 0 {
         if secp256k1_eckey_pubkey_tweak_mul(&(*ctx).ecmult_ctx, &mut p, &factor) as libc::c_int != 0
@@ -49304,7 +49304,7 @@ pub unsafe extern "C" fn secp256k1_ec_pubkey_combine(
     memset(
         pubnonce as *mut libc::c_void,
         0 as libc::c_int,
-        std::mem::size_of::<secp256k1_pubkey>(),
+        core::mem::size_of::<secp256k1_pubkey>(),
     );
     if n < 1 {
         secp256k1_callback_call(
@@ -49502,7 +49502,7 @@ unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_load(
     recid: *mut libc::c_int,
     sig: *const secp256k1_ecdsa_recoverable_signature,
 ) {
-    if std::mem::size_of::<secp256k1_scalar>() == 32 {
+    if core::mem::size_of::<secp256k1_scalar>() == 32 {
         /* When the secp256k1_scalar type is exactly 32 byte, use its
          * representation inside secp256k1_ecdsa_signature, as conversion is very fast.
          * Note that secp256k1_ecdsa_signature_save must use the same representation. */
@@ -49522,12 +49522,12 @@ unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_load(
         secp256k1_scalar_set_b32(
             r,
             &*(*sig).data.as_ptr().offset(0 as libc::c_int as isize),
-            std::ptr::null_mut(),
+            core::ptr::null_mut(),
         );
         secp256k1_scalar_set_b32(
             s,
             &*(*sig).data.as_ptr().offset(32 as libc::c_int as isize),
-            std::ptr::null_mut(),
+            core::ptr::null_mut(),
         );
     }
     *recid = (*sig).data[64 as libc::c_int as usize] as libc::c_int;
@@ -49539,7 +49539,7 @@ unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_save(
     s: *const secp256k1_scalar,
     recid: libc::c_int,
 ) {
-    if std::mem::size_of::<secp256k1_scalar>() == 32 {
+    if core::mem::size_of::<secp256k1_scalar>() == 32 {
         memcpy(
             &mut *(*sig).data.as_mut_ptr().offset(0 as libc::c_int as isize) as *mut libc::c_uchar
                 as *mut libc::c_void,
@@ -49624,7 +49624,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_recoverable_signature_parse_compact(
         memset(
             sig as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_ecdsa_recoverable_signature>(),
+            core::mem::size_of::<secp256k1_ecdsa_recoverable_signature>(),
         );
     }
     return ret;
@@ -49884,13 +49884,13 @@ pub unsafe extern "C" fn secp256k1_ecdsa_sign_recoverable(
     if overflow == 0 && secp256k1_scalar_is_zero(&sec) == 0 {
         let mut nonce32: [libc::c_uchar; 32] = [0; 32];
         let mut count: libc::c_uint = 0 as libc::c_int as libc::c_uint;
-        secp256k1_scalar_set_b32(&mut msg, msg32, std::ptr::null_mut());
+        secp256k1_scalar_set_b32(&mut msg, msg32, core::ptr::null_mut());
         loop {
             ret = noncefp.expect("non-null function pointer")(
                 nonce32.as_mut_ptr(),
                 msg32,
                 seckey,
-                std::ptr::null(),
+                core::ptr::null(),
                 noncedata as *mut libc::c_void,
                 count,
             );
@@ -49929,7 +49929,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_sign_recoverable(
         memset(
             signature as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_ecdsa_recoverable_signature>(),
+            core::mem::size_of::<secp256k1_ecdsa_recoverable_signature>(),
         );
     }
     return ret;
@@ -50021,7 +50021,7 @@ pub unsafe extern "C" fn secp256k1_ecdsa_recover(
         );
         panic!();
     }
-    secp256k1_scalar_set_b32(&mut m, msg32, std::ptr::null_mut());
+    secp256k1_scalar_set_b32(&mut m, msg32, core::ptr::null_mut());
     if secp256k1_ecdsa_sig_recover(&(*ctx).ecmult_ctx, &r, &s, &mut q, &m, recid) != 0 {
         secp256k1_pubkey_save(pubkey, &mut q);
         return 1 as libc::c_int;
@@ -50029,13 +50029,13 @@ pub unsafe extern "C" fn secp256k1_ecdsa_recover(
         memset(
             pubkey as *mut libc::c_void,
             0 as libc::c_int,
-            std::mem::size_of::<secp256k1_pubkey>(),
+            core::mem::size_of::<secp256k1_pubkey>(),
         );
         return 0 as libc::c_int;
     };
 }
 unsafe extern "C" fn run_static_initializers() {
-    SECP256K1_ECMULT_CONTEXT_PREALLOCATED_SIZE = std::mem::size_of::<secp256k1_ge_storage>()
+    SECP256K1_ECMULT_CONTEXT_PREALLOCATED_SIZE = core::mem::size_of::<secp256k1_ge_storage>()
         .wrapping_mul(1 << (15 - 2))
         .wrapping_add(16)
         .wrapping_sub(1)

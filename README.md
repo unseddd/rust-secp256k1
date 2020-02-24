@@ -7,6 +7,14 @@ You can benchmark this against the C lib by doing the following:
 libsecp: `cargo +nightly bench --features=unstable`
 c2rust: `cargo +nightly bench --features="c2rust,unstable"`
 
+Run miri:
+```bash
+rustup +nightly component add miri
+rustup toolchain install nightly
+cargo clean
+cargo +nightly miri test --features=c2rust
+```
+
 [![Build Status](https://travis-ci.org/rust-bitcoin/rust-secp256k1.png?branch=master)](https://travis-ci.org/rust-bitcoin/rust-secp256k1)
 
 [Full documentation](https://docs.rs/secp256k1/)

@@ -269,9 +269,9 @@ impl Signature {
         unsafe {
             if ffi::secp256k1_ecdsa_signature_parse_der(
                 ffi::secp256k1_context_no_precomp,
-                &mut ret,
+                mem::transmute(&mut ret),
                 data.as_c_ptr(),
-                data.len() as usize,
+                data.len(),
             ) == 1
             {
                 Ok(Signature(ret))
@@ -291,7 +291,7 @@ impl Signature {
         unsafe {
             if ffi::secp256k1_ecdsa_signature_parse_compact(
                 ffi::secp256k1_context_no_precomp,
-                &mut ret,
+                mem::transmute(&mut ret),
                 data.as_c_ptr(),
             ) == 1
             {
@@ -312,10 +312,10 @@ impl Signature {
         unsafe {
             let mut ret = ffi::Signature::new();
             if ffi::ecdsa_signature_parse_der_lax(
-                ffi::secp256k1_context_no_precomp,
-                &mut ret,
+                ffi::secp256k1_context_no_precomp as _,
+                mem::transmute(&mut ret),
                 data.as_c_ptr(),
-                data.len() as usize,
+                data.len(),
             ) == 1
             {
                 Ok(Signature(ret))
@@ -348,8 +348,8 @@ impl Signature {
             // was already normalized. We don't care.
             ffi::secp256k1_ecdsa_signature_normalize(
                 ffi::secp256k1_context_no_precomp,
-                self.as_mut_c_ptr(),
-                self.as_c_ptr(),
+                self.as_mut_c_ptr() as _,
+                self.as_c_ptr() as _,
             );
         }
     }
@@ -376,10 +376,10 @@ impl Signature {
                 ffi::secp256k1_context_no_precomp,
                 ret.get_data_mut_ptr(),
                 &mut len,
-                self.as_c_ptr(),
+                self.as_c_ptr() as _,
             );
             debug_assert!(err == 1);
-            ret.set_len(len);
+            ret.set_len(len as _);
         }
         ret
     }
@@ -392,7 +392,7 @@ impl Signature {
             let err = ffi::secp256k1_ecdsa_signature_serialize_compact(
                 ffi::secp256k1_context_no_precomp,
                 ret.as_mut_c_ptr(),
-                self.as_c_ptr(),
+                self.as_c_ptr() as _,
             );
             debug_assert!(err == 1);
         }
@@ -583,7 +583,7 @@ impl<C: Context> Eq for Secp256k1<C> { }
 impl<C: Context> Drop for Secp256k1<C> {
     fn drop(&mut self) {
         unsafe {
-            ffi::secp256k1_context_preallocated_destroy(self.ctx);
+            ffi::secp256k1_context_preallocated_destroy(self.ctx as _);
             C::deallocate(self.buf);
         }
     }
@@ -629,7 +629,7 @@ impl<C: Context> Secp256k1<C> {
         let mut seed = [0; 32];
         rng.fill_bytes(&mut seed);
         unsafe {
-            let err = ffi::secp256k1_context_randomize(self.ctx, seed.as_c_ptr());
+            let err = ffi::secp256k1_context_randomize(self.ctx as _, seed.as_c_ptr());
             // This function cannot fail; it has an error return for future-proofing.
             // We do not expose this error since it is impossible to hit, and we have
             // precedent for not exposing impossible errors (for example in
@@ -655,7 +655,7 @@ impl<C: Signing> Secp256k1<C> {
         unsafe {
             // We can assume the return value because it's not possible to construct
             // an invalid signature from a valid `Message` and `SecretKey`
-            assert_eq!(ffi::secp256k1_ecdsa_sign(self.ctx, &mut ret, msg.as_c_ptr(),
+            assert_eq!(ffi::secp256k1_ecdsa_sign(self.ctx as _, mem::transmute(&mut ret), msg.as_c_ptr(),
                                                  sk.as_c_ptr(), ffi::secp256k1_nonce_function_rfc6979,
                                                  ptr::null()), 1);
         }
@@ -686,7 +686,7 @@ impl<C: Verification> Secp256k1<C> {
     #[inline]
     pub fn verify(&self, msg: &Message, sig: &Signature, pk: &key::PublicKey) -> Result<(), Error> {
         unsafe {
-            if ffi::secp256k1_ecdsa_verify(self.ctx, sig.as_c_ptr(), msg.as_c_ptr(), pk.as_c_ptr()) == 0 {
+            if ffi::secp256k1_ecdsa_verify(self.ctx as _, sig.as_c_ptr() as _, msg.as_c_ptr(), pk.as_c_ptr() as _) == 0 {
                 Err(Error::IncorrectSignature)
             } else {
                 Ok(())
@@ -753,9 +753,9 @@ mod tests {
         let ctx_vrfy = unsafe { ffi::secp256k1_context_create(VerifyOnlyPreallocated::FLAGS) };
 
         let buf: *mut [AlignType] = &mut [0 as AlignType;0] as _;
-        let full: Secp256k1<AllPreallocated> = Secp256k1{ctx: ctx_full, phantom: PhantomData, buf};
-        let sign: Secp256k1<SignOnlyPreallocated> = Secp256k1{ctx: ctx_sign, phantom: PhantomData, buf};
-        let vrfy: Secp256k1<VerifyOnlyPreallocated> = Secp256k1{ctx: ctx_vrfy, phantom: PhantomData, buf};
+        let full: Secp256k1<AllPreallocated> = Secp256k1{ctx: ctx_full as _, phantom: PhantomData, buf};
+        let sign: Secp256k1<SignOnlyPreallocated> = Secp256k1{ctx: ctx_sign as _, phantom: PhantomData, buf};
+        let vrfy: Secp256k1<VerifyOnlyPreallocated> = Secp256k1{ctx: ctx_vrfy as _, phantom: PhantomData, buf};
 
         let (sk, pk) = full.generate_keypair(&mut thread_rng());
         let msg = Message::from_slice(&[2u8; 32]).unwrap();

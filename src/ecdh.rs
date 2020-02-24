@@ -131,7 +131,7 @@ impl SharedSecret {
              ffi::secp256k1_ecdh(
                 ffi::secp256k1_context_no_precomp,
                 ss.get_data_mut_ptr(),
-                point.as_c_ptr(),
+                point.as_c_ptr() as _,
                 scalar.as_c_ptr(),
                 ffi::secp256k1_ecdh_hash_function_default,
                 ptr::null_mut(),
@@ -150,10 +150,10 @@ impl SharedSecret {
             ffi::secp256k1_ecdh(
                 ffi::secp256k1_context_no_precomp,
                 ss.get_data_mut_ptr(),
-                point.as_ptr(),
+                point.as_ptr() as _,
                 scalar.as_ptr(),
-                callback,
-                &mut closure as *mut F as *mut c_void,
+                core::mem::transmute(callback),
+                &mut closure as *mut F as _,
             )
         };
         if res == -1 {

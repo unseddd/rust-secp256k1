@@ -109,7 +109,7 @@ mod std_only {
             let buf = vec![0 as AlignType; Self::preallocate_size_gen()].into_boxed_slice();
             let ptr = Box::into_raw(buf);
             Secp256k1 {
-                ctx: unsafe { ffi::secp256k1_context_preallocated_create(ptr as *mut c_void, C::FLAGS) },
+                ctx: unsafe { ffi::secp256k1_context_preallocated_create(ptr as *mut c_void, C::FLAGS) as _ },
                 phantom: PhantomData,
                 buf: ptr,
             }
@@ -145,10 +145,10 @@ mod std_only {
 
     impl<C: Context> Clone for Secp256k1<C> {
         fn clone(&self) -> Secp256k1<C> {
-            let clone_size = unsafe {ffi::secp256k1_context_preallocated_clone_size(self.ctx)};
+            let clone_size = unsafe {ffi::secp256k1_context_preallocated_clone_size(self.ctx as _)};
             let ptr_buf = Box::into_raw(vec![0 as AlignType; clone_size].into_boxed_slice());
             Secp256k1 {
-                ctx: unsafe { ffi::secp256k1_context_preallocated_clone(self.ctx, ptr_buf as *mut c_void) },
+                ctx: unsafe { ffi::secp256k1_context_preallocated_clone(self.ctx as _, ptr_buf as *mut c_void) as _ },
                 phantom: PhantomData,
                 buf: ptr_buf,
             }
@@ -199,7 +199,7 @@ impl<'buf, C: Context + 'buf> Secp256k1<C> {
             ctx: unsafe {
                 ffi::secp256k1_context_preallocated_create(
                     buf.as_mut_c_ptr() as *mut c_void,
-                    C::FLAGS)
+                    C::FLAGS) as _
             },
             phantom: PhantomData,
             buf: buf as *mut [AlignType],

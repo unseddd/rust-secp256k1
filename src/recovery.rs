@@ -17,7 +17,7 @@
 //! Provides a signing function that allows recovering the public key from the
 //! signature.
 
-use core::ptr;
+use core::{ptr, mem};
 use key;
 use super::{Secp256k1, Message, Error, Signature, Verification, Signing};
 use super::ffi as super_ffi;
@@ -66,7 +66,7 @@ impl RecoverableSignature {
             if data.len() != 64 {
                 Err(Error::InvalidSignature)
             } else if ffi::secp256k1_ecdsa_recoverable_signature_parse_compact(
-                super_ffi::secp256k1_context_no_precomp,
+                super_ffi::secp256k1_context_no_precomp as _,
                 &mut ret,
                 data.as_c_ptr(),
                 recid.0,
@@ -98,7 +98,7 @@ impl RecoverableSignature {
         let mut recid = 0i32;
         unsafe {
             let err = ffi::secp256k1_ecdsa_recoverable_signature_serialize_compact(
-                super_ffi::secp256k1_context_no_precomp,
+                super_ffi::secp256k1_context_no_precomp as _,
                 ret.as_mut_c_ptr(),
                 &mut recid,
                 self.as_c_ptr(),
@@ -115,7 +115,7 @@ impl RecoverableSignature {
         let mut ret = super_ffi::Signature::new();
         unsafe {
             let err = ffi::secp256k1_ecdsa_recoverable_signature_convert(
-                super_ffi::secp256k1_context_no_precomp,
+                super_ffi::secp256k1_context_no_precomp as _,
                 &mut ret,
                 self.as_c_ptr(),
             );
@@ -161,7 +161,7 @@ impl<C: Signing> Secp256k1<C> {
                     &mut ret,
                     msg.as_c_ptr(),
                     sk.as_c_ptr(),
-                    super_ffi::secp256k1_nonce_function_rfc6979,
+                    mem::transmute(super_ffi::secp256k1_nonce_function_rfc6979),
                     ptr::null()
                 ),
                 1

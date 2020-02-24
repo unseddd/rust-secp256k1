@@ -148,8 +148,12 @@ impl Default for Signature {
     }
 }
 
+#[cfg(feature = "c2rust")]
+pub use c2rust_out::src::src::secp256k1::*;
+#[cfg(feature = "c2rust")]
+pub use c2rust_out::src::contrib::lax_der_parsing::*;
 
-#[cfg(not(feature = "fuzztarget"))]
+#[cfg(all(not(feature = "fuzztarget"), not(feature = "c2rust")))]
 extern "C" {
     /// Default ECDH hash function
     #[cfg_attr(not(feature = "external-symbols"), link_name = "rustsecp256k1_v0_1_1_ecdh_hash_function_default")]

@@ -14,13 +14,13 @@
 
 //! # secp256k1 no-std test.
 //! This binary is a short smallest rust code to produce a working binary *without libstd*.
-//! This gives us 2 things: 
+//! This gives us 2 things:
 //!     1. Test that the parts of the code that should work in a no-std enviroment actually work.
 //!     2. Test that we don't accidentally import libstd into `secp256k1`.
-//! 
+//!
 //! The first is tested using the following command `cargo run --release | grep -q "Verified Successfully"`.
 //! (Making sure that it successfully printed that. i.e. it didn't abort before that).
-//! 
+//!
 //! The second is tested by the fact that it compiles. if we accidentally link against libstd we should see the following error:
 //! `error[E0152]: duplicate lang item found`.
 //! Example:
@@ -33,11 +33,11 @@
 //!    |
 //!    = note: first defined in crate `panic_unwind` (which `std` depends on).
 //! ```
-//! 
-//! Notes: 
+//!
+//! Notes:
 //!     * Requires `panic=abort` and `--release` to not depend on libunwind(which is provided usually by libstd) https://github.com/rust-lang/rust/issues/47493
 //!     * Requires linking with `libc` for calling `printf`.
-//!     
+//!
 
 #![feature(lang_items)]
 #![feature(start)]
@@ -82,7 +82,7 @@ impl RngCore for FakeRng {
 
 #[start]
 fn start(_argc: isize, _argv: *const *const u8) -> isize {
-    let mut buf = [0u8; 600_000];
+    let mut buf = [0usize; 150_000];
     let size = Secp256k1::preallocate_size();
     unsafe { libc::printf("needed size: %d\n\0".as_ptr() as _, size) };
 
@@ -111,7 +111,7 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
     })}.unwrap();
     assert_ne!(x_arr, [0u8; 32]);
     assert_ne!(&y_arr[..], &[0u8; 32][..]);
-    
+
 
     unsafe { libc::printf("Verified Successfully!\n\0".as_ptr() as _) };
     0

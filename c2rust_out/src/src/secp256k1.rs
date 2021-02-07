@@ -436,7 +436,7 @@ unsafe extern "C" fn manual_alloc(
         );
         panic!();
     }
-    if !((*prealloc_ptr as *mut libc::c_uchar).wrapping_offset_from(base as *mut libc::c_uchar)
+    if !((*prealloc_ptr as *mut libc::c_uchar).offset_from(base as *mut libc::c_uchar)
         as libc::c_long
         % 16 as libc::c_int as libc::c_long
         == 0 as libc::c_int as libc::c_long) as libc::c_int as libc::c_long
@@ -450,7 +450,7 @@ unsafe extern "C" fn manual_alloc(
                     as *const u8 as *const libc::c_char);
         panic!();
     }
-    if !(((*prealloc_ptr as *mut libc::c_uchar).wrapping_offset_from(base as *mut libc::c_uchar)
+    if !(((*prealloc_ptr as *mut libc::c_uchar).offset_from(base as *mut libc::c_uchar)
         as size_t)
         .wrapping_add(aligned_alloc_size)
         <= max_size) as libc::c_int as libc::c_long
@@ -7332,7 +7332,7 @@ unsafe extern "C" fn secp256k1_ecmult_context_finalize_memcpy(
     if !(*src).pre_g.is_null() {
         /* We cast to void* first to suppress a -Wcast-align warning. */
         (*dst).pre_g = (dst as *mut libc::c_uchar).offset(
-            ((*src).pre_g as *mut libc::c_uchar).wrapping_offset_from(src as *mut libc::c_uchar)
+            ((*src).pre_g as *mut libc::c_uchar).offset_from(src as *mut libc::c_uchar)
                 as libc::c_long as isize,
         ) as *mut libc::c_void as *mut [secp256k1_ge_storage; 0]
     };
@@ -46552,7 +46552,7 @@ unsafe extern "C" fn secp256k1_der_read_len(
     }
     /* X.690-207 8.1.3.5 long form length octets */
     lenleft = (b1 as libc::c_int & 0x7f as libc::c_int) as size_t; /* lenleft is at least 1 */
-    if lenleft > sigend.wrapping_offset_from(*sigp) as libc::c_long as size_t {
+    if lenleft > sigend.offset_from(*sigp) as libc::c_long as size_t {
         return 0 as libc::c_int;
     }
     if **sigp as libc::c_int == 0 as libc::c_int {
@@ -46570,7 +46570,7 @@ unsafe extern "C" fn secp256k1_der_read_len(
         *sigp = (*sigp).offset(1);
         lenleft = lenleft.wrapping_sub(1)
     }
-    if *len > sigend.wrapping_offset_from(*sigp) as libc::c_long as size_t {
+    if *len > sigend.offset_from(*sigp) as libc::c_long as size_t {
         /* Result exceeds the length of the passed array. */
         return 0 as libc::c_int;
     }
@@ -46669,7 +46669,7 @@ unsafe extern "C" fn secp256k1_ecdsa_sig_parse(
     if secp256k1_der_read_len(&mut rlen, &mut sig, sigend) == 0 as libc::c_int {
         return 0 as libc::c_int;
     }
-    if rlen != sigend.wrapping_offset_from(sig) as libc::c_long as size_t {
+    if rlen != sigend.offset_from(sig) as libc::c_long as size_t {
         /* Tuple exceeds bounds or garage after tuple. */
         return 0 as libc::c_int;
     }

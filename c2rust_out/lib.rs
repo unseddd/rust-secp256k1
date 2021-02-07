@@ -16,7 +16,6 @@
 #![forbid(clippy::unnecessary_mut_passed)]
 #![feature(const_raw_ptr_to_usize_cast)]
 #![feature(extern_types)]
-#![feature(ptr_wrapping_offset_from)]
 #![feature(register_tool)]
 #![register_tool(c2rust)]
 
